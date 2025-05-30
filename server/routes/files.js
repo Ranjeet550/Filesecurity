@@ -7,7 +7,7 @@ const {
   deleteFile,
   getFilePassword
 } = require('../controllers/files');
-const { protect } = require('../middleware/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 const { trackLocation } = require('../middleware/location');
 const upload = require('../middleware/upload');
 
@@ -20,7 +20,7 @@ router.post('/upload', protect, upload.single('file'), uploadFile);
 router.get('/', protect, getFiles);
 router.get('/:id', protect, getFile);
 router.get('/:id/password', protect, getFilePassword);
-router.post('/:id/download', downloadFile);
+router.post('/:id/download', optionalAuth, downloadFile);
 router.delete('/:id', protect, deleteFile);
 
 module.exports = router;

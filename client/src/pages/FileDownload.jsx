@@ -25,7 +25,7 @@ import {
   CheckCircleOutlined,
   LoginOutlined
 } from '@ant-design/icons';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getFileById, downloadFile } from '../api/fileService';
 
 const { Title, Text } = Typography;
@@ -58,7 +58,6 @@ const formatBytes = (bytes, decimals = 2) => {
 
 const FileDownload = () => {
   const { fileId } = useParams();
-  const location = useLocation();
   const [form] = Form.useForm();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,13 +65,6 @@ const FileDownload = () => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [autoDownloadAttempted, setAutoDownloadAttempted] = useState(false);
-
-  // Extract password from URL query parameters
-  const getPasswordFromUrl = () => {
-    const searchParams = new URLSearchParams(location.search);
-    return searchParams.get('password');
-  };
 
   useEffect(() => {
     const fetchFile = async () => {
@@ -80,12 +72,6 @@ const FileDownload = () => {
         setLoading(true);
         const response = await getFileById(fileId);
         setFile(response.data);
-
-        // Set the password from URL in the form if available
-        const urlPassword = getPasswordFromUrl();
-        if (urlPassword) {
-          form.setFieldsValue({ password: urlPassword });
-        }
       } catch (error) {
         console.error('Error fetching file:', error);
         setError('File not found or has expired');
@@ -95,7 +81,7 @@ const FileDownload = () => {
     };
 
     fetchFile();
-  }, [fileId, form, location.search]);
+  }, [fileId]);
 
   const handleDownload = async (values, event) => {
     // If an event was passed, prevent default behavior
@@ -142,27 +128,6 @@ const FileDownload = () => {
       setDownloading(false);
     }
   };
-
-  // Effect to automatically download the file if password is in URL
-  useEffect(() => {
-    const attemptAutoDownload = async () => {
-      // Only attempt auto-download once and when file is loaded and not already downloading
-      if (!autoDownloadAttempted && file && !loading && !downloading) {
-        const urlPassword = getPasswordFromUrl();
-
-        if (urlPassword) {
-          console.log('Auto-downloading file with password from URL');
-          setAutoDownloadAttempted(true);
-          await handleDownload({ password: urlPassword });
-        }
-      }
-    };
-
-    attemptAutoDownload();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, loading, downloading, autoDownloadAttempted]);
-
-
 
   if (loading) {
     return (
@@ -316,7 +281,7 @@ const FileDownload = () => {
                 <Text strong style={{ color: '#d46b08' }}>Password Protected File</Text>
                 <div>
                   <Text type="warning">
-                    You need the correct password to download this file. The downloaded file will also be password-protected and require the same password to open.
+                    You need the correct password to download this file. The downloaded file will open in your browser for secure viewing only.
                   </Text>
                 </div>
               </div>
@@ -332,16 +297,6 @@ const FileDownload = () => {
             showIcon
             closable
             onClose={() => setError(null)}
-            style={{ marginBottom: 24 }}
-          />
-        )}
-
-        {getPasswordFromUrl() && !error && !success && (
-          <Alert
-            message="Auto-Download"
-            description="Password detected in URL. File download has been automatically initiated."
-            type="info"
-            showIcon
             style={{ marginBottom: 24 }}
           />
         )}
@@ -371,11 +326,12 @@ const FileDownload = () => {
             name="password"
             label="File Password"
             rules={[{ required: true, message: 'Please enter the file password!' }]}
-            extra={getPasswordFromUrl() ? "Password detected in URL - auto-download initiated" : null}
+
           >
             <Input.Password
               prefix={<LockOutlined style={{ color: '#00BF96' }} />}
               placeholder="Enter the password provided by the sender"
+              autoComplete="off"
             />
           </Form.Item>
 
@@ -414,7 +370,7 @@ const FileDownload = () => {
               className="gradient-button"
               style={{ height: '45px', fontSize: '16px' }}
             >
-              {getPasswordFromUrl() && autoDownloadAttempted ? 'Download Again' : 'Download File'}
+              Download File
             </Button>
           </Form.Item>
         </Form>

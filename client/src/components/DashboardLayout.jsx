@@ -323,15 +323,7 @@ const DashboardLayout = ({ children }) => {
             {children}
           </div>
         </Content>
-        <Footer style={{
-          textAlign: 'center',
-          padding: screens.sm ? '16px' : '12px',
-          fontSize: screens.sm ? '14px' : '12px',
-          color: '#8c8c8c',
-          background: 'transparent'
-        }}>
-          Secure File Transfer ©{new Date().getFullYear()} Created with Ant Design
-        </Footer>
+       
       </Layout>
     </Layout>
   );

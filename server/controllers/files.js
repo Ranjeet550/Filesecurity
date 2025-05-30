@@ -127,7 +127,7 @@ exports.uploadFile = async (req, res) => {
 exports.getFiles = async (req, res) => {
   try {
     const files = await File.find({ uploadedBy: req.user.id })
-      .select('originalName size createdAt expiresAt downloads')
+      .select('originalName size createdAt expiresAt downloads mimetype')
       .sort('-createdAt');
 
     res.status(200).json({
@@ -225,14 +225,14 @@ exports.downloadFile = async (req, res) => {
       });
     }
 
-    // Record download information if user is logged in
-    if (req.user) {
-      file.downloads.push({
-        user: req.user.id,
-        location: req.userLocation
-      });
-      await file.save();
-    }
+    // Record download information (always record, even for anonymous downloads)
+    console.log('Recording download for file:', file._id, 'User:', req.user ? req.user.id : 'anonymous');
+    file.downloads.push({
+      user: req.user ? req.user.id : null,
+      location: req.userLocation
+    });
+    await file.save();
+    console.log('Download recorded. Total downloads for this file:', file.downloads.length);
 
     // Check if file exists on disk
     // Try different path resolutions to find the file

@@ -50,8 +50,7 @@ exports.encryptFile = async (filePath, password, originalName, mimeType) => {
     const htmlTemplate = createSelfExtractingHtml(
       originalName,
       mimeType,
-      encryptedBase64,
-      password
+      encryptedBase64
     );
 
     // Write the HTML file
@@ -69,16 +68,19 @@ exports.encryptFile = async (filePath, password, originalName, mimeType) => {
  * @param {string} fileName - Original name of the file
  * @param {string} mimeType - MIME type of the file
  * @param {string} encryptedBase64 - Base64-encoded encrypted file data
- * @param {string} correctPassword - The correct password for verification
  * @returns {string} - HTML template
  */
-function createSelfExtractingHtml(fileName, mimeType, encryptedBase64, correctPassword) {
+function createSelfExtractingHtml(fileName, mimeType, encryptedBase64) {
   return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="robots" content="noindex, nofollow">
   <title>Password Protected File - ${fileName}</title>
   <style>
     body {
@@ -164,7 +166,15 @@ function createSelfExtractingHtml(fileName, mimeType, encryptedBase64, correctPa
 
     <div class="form-group">
       <label for="password">Password:</label>
-      <input type="password" id="password" placeholder="Enter the file password">
+      <input
+        type="password"
+        id="password"
+        placeholder="Enter the file password"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+      >
     </div>
 
     <button id="decrypt-btn">Open File</button>
@@ -187,7 +197,6 @@ function createSelfExtractingHtml(fileName, mimeType, encryptedBase64, correctPa
     const encryptedData = "${encryptedBase64}";
     const fileName = "${fileName}";
     const mimeType = "${mimeType}";
-    const correctPassword = "${correctPassword}";
 
     // Decrypt and open the file when the button is clicked
     document.getElementById('decrypt-btn').addEventListener('click', async () => {
@@ -204,11 +213,6 @@ function createSelfExtractingHtml(fileName, mimeType, encryptedBase64, correctPa
       }
 
       try {
-        // Verify the password
-        if (password !== correctPassword) {
-          throw new Error('Invalid password');
-        }
-
         // Hide error and show progress
         errorElement.style.display = 'none';
         progressElement.style.display = 'block';
@@ -266,38 +270,230 @@ function createSelfExtractingHtml(fileName, mimeType, encryptedBase64, correctPa
         // Create a blob with the decrypted data
         const blob = new Blob([decryptedData], { type: mimeType });
 
-        // Create a download link
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-
         // Update progress
         progressBarElement.style.width = '100%';
 
         // Show success message
-        successElement.textContent = 'File decrypted successfully! Downloading...';
+        successElement.textContent = 'File decrypted successfully!';
         successElement.style.display = 'block';
 
-        // Trigger download
+        // Hide the form and show the file content
         setTimeout(() => {
-          a.click();
+          document.querySelector('.container').style.display = 'none';
+          displayFileContent(blob, fileName, mimeType);
 
-          // Clean up
-          URL.revokeObjectURL(url);
-          document.body.removeChild(a);
+          // Clear the password field for security
+          document.getElementById('password').value = '';
         }, 500);
       } catch (error) {
         console.error('Decryption error:', error);
-        errorElement.textContent = 'Invalid password or corrupted file';
+        // Show error message for invalid password or decryption failure
+        errorElement.textContent = 'Invalid password. Please check your password and try again.';
         errorElement.style.display = 'block';
         progressElement.style.display = 'none';
         progressBarElement.style.width = '0%';
         successElement.style.display = 'none';
+
+        // Clear the password field for security
+        document.getElementById('password').value = '';
       }
     });
+
+    // Function to display file content based on type
+    function displayFileContent(blob, fileName, mimeType) {
+      // Create viewer container
+      const viewerContainer = document.createElement('div');
+      viewerContainer.id = 'file-viewer';
+      viewerContainer.style.cssText = \`
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #f5f5f5;
+        z-index: 1000;
+        overflow: auto;
+        padding: 20px;
+        box-sizing: border-box;
+      \`;
+
+      // Create header with file info and download button
+      const header = document.createElement('div');
+      header.style.cssText = \`
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        @media (max-width: 768px) {
+          padding: 16px;
+          flex-direction: column;
+          align-items: stretch;
+        }
+      \`;
+
+      const fileInfo = document.createElement('div');
+      fileInfo.innerHTML = \`
+        <h2 style="margin: 0; color: #1a2141; font-size: 20px;">\${fileName}</h2>
+        <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">Type: \${mimeType}</p>
+      \`;
+
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.cssText = 'display: flex; gap: 12px; align-items: center;';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+      closeBtn.style.cssText = \`
+        background: linear-gradient(90deg, #00BF96 0%, #00A080 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      \`;
+      closeBtn.onmouseover = () => closeBtn.style.transform = 'translateY(-1px)';
+      closeBtn.onmouseout = () => closeBtn.style.transform = 'translateY(0)';
+      closeBtn.onclick = () => {
+        document.body.removeChild(viewerContainer);
+        document.querySelector('.container').style.display = 'block';
+        // Reset form
+        document.getElementById('password').value = '';
+        document.getElementById('error-message').style.display = 'none';
+        document.getElementById('progress').style.display = 'none';
+        document.getElementById('success-message').style.display = 'none';
+      };
+
+      buttonContainer.appendChild(closeBtn);
+      header.appendChild(fileInfo);
+      header.appendChild(buttonContainer);
+
+      // Create content area
+      const contentArea = document.createElement('div');
+      contentArea.style.cssText = \`
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        min-height: 400px;
+      \`;
+
+      viewerContainer.appendChild(header);
+      viewerContainer.appendChild(contentArea);
+
+      // Display content based on file type
+      if (mimeType.startsWith('image/')) {
+        displayImage(contentArea, blob);
+      } else if (mimeType === 'application/pdf') {
+        displayPDF(contentArea, blob);
+      } else if (mimeType.startsWith('text/') || mimeType.includes('json') || mimeType.includes('xml')) {
+        displayText(contentArea, blob);
+      } else if (mimeType.startsWith('video/')) {
+        displayVideo(contentArea, blob);
+      } else if (mimeType.startsWith('audio/')) {
+        displayAudio(contentArea, blob);
+      } else {
+        displayGeneric(contentArea, fileName, mimeType);
+      }
+
+      document.body.appendChild(viewerContainer);
+    }
+
+    // Display functions for different file types
+    function displayImage(container, blob) {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob);
+      img.style.cssText = \`
+        max-width: 100%;
+        max-height: 80vh;
+        display: block;
+        margin: 20px auto;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      \`;
+      img.onload = () => URL.revokeObjectURL(img.src);
+      container.appendChild(img);
+    }
+
+    function displayPDF(container, blob) {
+      const iframe = document.createElement('iframe');
+      iframe.src = URL.createObjectURL(blob);
+      iframe.style.cssText = \`
+        width: 100%;
+        height: 80vh;
+        border: none;
+      \`;
+      container.appendChild(iframe);
+    }
+
+    function displayText(container, blob) {
+      blob.text().then(text => {
+        const pre = document.createElement('pre');
+        pre.style.cssText = \`
+          padding: 20px;
+          margin: 0;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 14px;
+          line-height: 1.5;
+          background: #f8f9fa;
+          color: #333;
+          max-height: 80vh;
+          overflow: auto;
+        \`;
+        pre.textContent = text;
+        container.appendChild(pre);
+      });
+    }
+
+    function displayVideo(container, blob) {
+      const video = document.createElement('video');
+      video.src = URL.createObjectURL(blob);
+      video.controls = true;
+      video.style.cssText = \`
+        max-width: 100%;
+        max-height: 80vh;
+        display: block;
+        margin: 20px auto;
+      \`;
+      container.appendChild(video);
+    }
+
+    function displayAudio(container, blob) {
+      const audio = document.createElement('audio');
+      audio.src = URL.createObjectURL(blob);
+      audio.controls = true;
+      audio.style.cssText = \`
+        width: 100%;
+        margin: 20px auto;
+        display: block;
+      \`;
+      container.appendChild(audio);
+    }
+
+    function displayGeneric(container, fileName, mimeType) {
+      const message = document.createElement('div');
+      message.style.cssText = \`
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+      \`;
+      message.innerHTML = \`
+        <div style="font-size: 48px; margin-bottom: 20px; color: #ccc;">📄</div>
+        <h3 style="margin: 0 0 10px 0; color: #333;">File Decrypted Successfully</h3>
+        <p style="margin: 0 0 10px 0;">This file type cannot be previewed in the browser.</p>
+        <p style="margin: 0; font-size: 14px; color: #999;">The file has been decrypted and is ready for viewing.</p>
+      \`;
+      container.appendChild(message);
+    }
   </script>
 </body>
 </html>

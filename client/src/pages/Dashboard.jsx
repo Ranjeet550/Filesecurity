@@ -13,7 +13,14 @@ import {
   App,
   Tabs,
   Empty,
-  Tooltip
+  Tooltip,
+  Modal,
+  Form,
+  Input,
+  Alert,
+  Divider,
+  Spin,
+  Result
 } from 'antd';
 import {
   FileOutlined,
@@ -27,11 +34,16 @@ import {
   ShareAltOutlined,
   ClockCircleOutlined,
   AppstoreOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  LockOutlined,
+  SecurityScanOutlined,
+  FileProtectOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
-import { getFiles, deleteFile, getFilePassword } from '../api/fileService';
+import { getFiles, deleteFile, getFileById, downloadFile } from '../api/fileService';
 import AuthContext from '../context/AuthContext';
 import { STORAGE_LIMIT } from '../config';
 
@@ -67,6 +79,16 @@ const Dashboard = () => {
     storageLimit: STORAGE_LIMIT
   });
 
+  // Download modal state
+  const [downloadModalVisible, setDownloadModalVisible] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [downloadForm] = Form.useForm();
+  const [downloadLoading, setDownloadLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadError, setDownloadError] = useState(null);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+
   // Check if we should show all files view
   useEffect(() => {
     const view = searchParams.get('view');
@@ -85,11 +107,14 @@ const Dashboard = () => {
 
       // Calculate stats
       const totalFiles = response.data.length;
-      const totalDownloads = response.data.reduce((acc, file) => acc + file.downloads.length, 0);
+      const totalDownloads = response.data.reduce((acc, file) => {
+        const downloadCount = file.downloads && Array.isArray(file.downloads) ? file.downloads.length : 0;
+        return acc + downloadCount;
+      }, 0);
       const recentUploads = response.data.filter(
         file => new Date(file.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       ).length;
-      const storageUsed = response.data.reduce((acc, file) => acc + file.size, 0);
+      const storageUsed = response.data.reduce((acc, file) => acc + (file.size || 0), 0);
 
       setStats({
         totalFiles,
@@ -145,6 +170,76 @@ const Dashboard = () => {
     }
   };
 
+  // Handle opening download modal
+  const handleDownloadClick = async (record) => {
+    try {
+      setDownloadLoading(true);
+      setDownloadError(null);
+      setDownloadSuccess(false);
+      setDownloadProgress(0);
+
+      // Fetch file details
+      const response = await getFileById(record.id || record._id);
+      setSelectedFile(response.data);
+      setDownloadModalVisible(true);
+    } catch (error) {
+      console.error('Error fetching file details:', error);
+      message.error('Failed to load file details');
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  // Handle download in modal
+  const handleModalDownload = async (values) => {
+    try {
+      setDownloading(true);
+      setDownloadError(null);
+
+      // Simulate download progress
+      const progressInterval = setInterval(() => {
+        setDownloadProgress(prev => {
+          if (prev >= 99) {
+            clearInterval(progressInterval);
+            return 99;
+          }
+          return prev + Math.floor(Math.random() * 10);
+        });
+      }, 300);
+
+      // Perform the download
+      const result = await downloadFile(selectedFile.id || selectedFile._id, values.password);
+      console.log('Download completed successfully:', result);
+
+      clearInterval(progressInterval);
+      setDownloadProgress(100);
+
+      // Show success state
+      setTimeout(() => {
+        setDownloadSuccess(true);
+        // Refresh the files list to update download counts
+        fetchFiles();
+      }, 500);
+
+    } catch (error) {
+      console.error('Download error:', error);
+      setDownloadError('Invalid password or file not available');
+      setDownloadProgress(0);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Close download modal
+  const closeDownloadModal = () => {
+    setDownloadModalVisible(false);
+    setSelectedFile(null);
+    setDownloadError(null);
+    setDownloadSuccess(false);
+    setDownloadProgress(0);
+    downloadForm.resetFields();
+  };
+
   // Format bytes to human readable format
   const formatBytes = (bytes, decimals = 2) => {
     if (bytes === 0) return '0 Bytes';
@@ -193,12 +288,15 @@ const Dashboard = () => {
       title: 'Downloads',
       dataIndex: 'downloads',
       key: 'downloads',
-      render: (downloads) => (
-        <Space>
-          <DownloadOutlined style={{ color: '#1890ff' }} />
-          {downloads.length}
-        </Space>
-      ),
+      render: (downloads) => {
+        const downloadCount = downloads && Array.isArray(downloads) ? downloads.length : 0;
+        return (
+          <Space>
+            <DownloadOutlined style={{ color: '#1890ff' }} />
+            <span style={{ fontWeight: '500' }}>{downloadCount}</span>
+          </Space>
+        );
+      },
       width: '12%',
     },
     {
@@ -228,34 +326,27 @@ const Dashboard = () => {
       key: 'actions',
       render: (_, record) => (
         <Space size="small">
-          <Link to={`/download/${record.id || record._id}`}>
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              size="small"
-              className="gradient-button"
-            >
-              Download
-            </Button>
-          </Link>
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            size="small"
+            className="gradient-button"
+            onClick={() => handleDownloadClick(record)}
+            loading={downloadLoading && selectedFile?.id === (record.id || record._id)}
+          >
+            Download
+          </Button>
           <Button
             type="default"
             icon={<ShareAltOutlined />}
             size="small"
             onClick={async () => {
               try {
-                // Get the file password
                 const fileId = record.id || record._id;
-                const response = await getFilePassword(fileId);
-                if (response.success && response.data.password) {
-                  // Create a link with the password included as a query parameter
-                  // Use id instead of _id as that's what the server returns
-                  const link = `${window.location.origin}/download/${fileId}?password=${encodeURIComponent(response.data.password)}`;
-                  navigator.clipboard.writeText(link);
-                  message.success('Link with password copied to clipboard');
-                } else {
-                  throw new Error('Failed to get file password');
-                }
+                // Create a link without the password for security
+                const link = `${window.location.origin}/download/${fileId}`;
+                navigator.clipboard.writeText(link);
+                message.success('Download link copied to clipboard');
               } catch (error) {
                 console.error('Error sharing file:', error);
                 message.error('Failed to share file');
@@ -293,129 +384,104 @@ const Dashboard = () => {
               <Text type="secondary">Here's an overview of your secure file transfers</Text>
             </div>
 
-            <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
               <Col xs={24} sm={12} lg={6}>
                 <Card
                   styles={{
-                    body: { padding: '20px' }
+                    body: { padding: '24px' }
                   }}
                   style={{
-                    background: 'linear-gradient(135deg, #1a2141 0%, #273053 100%)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(26, 33, 65, 0.15)',
-                    border: 'none',
-                    overflow: 'hidden',
-                    height: '100%',
-                    transition: 'all 0.3s ease',
-                    transform: 'translateY(0)',
-                    '&:hover': {
-                      transform: 'translateY(-5px)',
-                      boxShadow: '0 8px 16px rgba(26, 33, 65, 0.2)',
-                    }
+                    background: '#ffffff',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                    border: '1px solid #f0f0f0',
+                    height: '100%'
                   }}
                 >
                   <Statistic
-                    title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>Total Files</span>}
+                    title={<span style={{ color: '#666666', fontSize: '14px', fontWeight: '500' }}>Total Files</span>}
                     value={stats.totalFiles}
-                    valueStyle={{ color: 'white', fontSize: '28px' }}
-                    prefix={<FileOutlined style={{ marginRight: '8px' }} />}
+                    valueStyle={{ color: '#1a1a1a', fontSize: '32px', fontWeight: '600' }}
+                    prefix={<FileOutlined style={{ color: '#1890ff', fontSize: '20px', marginRight: '8px' }} />}
                   />
                 </Card>
               </Col>
               <Col xs={24} sm={12} lg={6}>
                 <Card
                   styles={{
-                    body: { padding: '20px' }
+                    body: { padding: '24px' }
                   }}
                   style={{
-                    background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(24, 144, 255, 0.15)',
-                    border: 'none',
-                    overflow: 'hidden',
-                    height: '100%',
-                    transition: 'all 0.3s ease',
-                    transform: 'translateY(0)',
-                    '&:hover': {
-                      transform: 'translateY(-5px)',
-                      boxShadow: '0 8px 16px rgba(24, 144, 255, 0.2)',
-                    }
+                    background: '#ffffff',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                    border: '1px solid #f0f0f0',
+                    height: '100%'
                   }}
                 >
                   <Statistic
-                    title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>Downloads</span>}
+                    title={<span style={{ color: '#666666', fontSize: '14px', fontWeight: '500' }}>Downloads</span>}
                     value={stats.totalDownloads}
-                    valueStyle={{ color: 'white', fontSize: '28px' }}
-                    prefix={<DownloadOutlined style={{ marginRight: '8px' }} />}
+                    valueStyle={{ color: '#1a1a1a', fontSize: '32px', fontWeight: '600' }}
+                    prefix={<DownloadOutlined style={{ color: '#52c41a', fontSize: '20px', marginRight: '8px' }} />}
                   />
                 </Card>
               </Col>
               <Col xs={24} sm={12} lg={6}>
                 <Card
                   styles={{
-                    body: { padding: '20px' }
+                    body: { padding: '24px' }
                   }}
                   style={{
-                    background: 'linear-gradient(135deg, #FF9F43 0%, #FF7A01 100%)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(255, 159, 67, 0.15)',
-                    border: 'none',
-                    overflow: 'hidden',
-                    height: '100%',
-                    transition: 'all 0.3s ease',
-                    transform: 'translateY(0)',
-                    '&:hover': {
-                      transform: 'translateY(-5px)',
-                      boxShadow: '0 8px 16px rgba(255, 159, 67, 0.2)',
-                    }
+                    background: '#ffffff',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                    border: '1px solid #f0f0f0',
+                    height: '100%'
                   }}
                 >
                   <Statistic
-                    title={<span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>Recent Uploads</span>}
+                    title={<span style={{ color: '#666666', fontSize: '14px', fontWeight: '500' }}>Recent Uploads</span>}
                     value={stats.recentUploads}
-                    valueStyle={{ color: 'white', fontSize: '28px' }}
-                    prefix={<UploadOutlined style={{ marginRight: '8px' }} />}
-                    suffix={<small style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>/7 days</small>}
+                    valueStyle={{ color: '#1a1a1a', fontSize: '32px', fontWeight: '600' }}
+                    prefix={<UploadOutlined style={{ color: '#fa8c16', fontSize: '20px', marginRight: '8px' }} />}
+                    suffix={<small style={{ fontSize: '12px', color: '#999999', fontWeight: '400' }}>/7 days</small>}
                   />
                 </Card>
               </Col>
               <Col xs={24} sm={12} lg={6}>
                 <Card
                   styles={{
-                    body: { padding: '20px' }
+                    body: { padding: '24px' }
                   }}
                   style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-                    border: '1px solid rgba(0, 0, 0, 0.03)',
-                    overflow: 'hidden',
-                    height: '100%',
-                    transition: 'all 0.3s ease',
-                    transform: 'translateY(0)',
-                    '&:hover': {
-                      transform: 'translateY(-5px)',
-                      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.08)',
-                    }
+                    background: '#ffffff',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                    border: '1px solid #f0f0f0',
+                    height: '100%'
                   }}
                 >
-                  <div style={{ marginBottom: '8px' }}>
-                    <Text strong style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <Text strong style={{ fontSize: '14px', fontWeight: '500', color: '#666666', display: 'flex', alignItems: 'center' }}>
                       Storage Used
                       <Tooltip title={`${formatBytes(stats.storageUsed)} of ${formatBytes(stats.storageLimit)} used`}>
-                        <InfoCircleOutlined style={{ marginLeft: '8px', color: '#8c8c8c', fontSize: '12px' }} />
+                        <InfoCircleOutlined style={{ marginLeft: '8px', color: '#999999', fontSize: '12px' }} />
                       </Tooltip>
+                    </Text>
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <Text style={{ fontSize: '32px', fontWeight: '600', color: '#1a1a1a' }}>
+                      {storagePercentage}%
                     </Text>
                   </div>
                   <Progress
                     percent={storagePercentage}
                     status={storagePercentage > 90 ? "exception" : "normal"}
-                    strokeColor={{
-                      '0%': '#00BF96',
-                      '100%': '#00A080',
-                    }}
-                    strokeWidth={8}
-                    trailColor="#f0f0f0"
+                    strokeColor={storagePercentage > 90 ? '#ff4d4f' : '#1890ff'}
+                    strokeWidth={6}
+                    trailColor="#f5f5f5"
+                    showInfo={false}
                   />
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
                     <Text type="secondary" style={{ fontSize: '12px' }}>{formatBytes(stats.storageUsed)}</Text>
@@ -430,17 +496,17 @@ const Dashboard = () => {
         <Card
           styles={{
             header: {
-              borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
-              padding: '16px 20px'
+              borderBottom: '1px solid #f0f0f0',
+              padding: '20px 24px'
             },
             body: {
               padding: '0'
             }
           }}
           style={{
-            borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-            border: '1px solid rgba(0, 0, 0, 0.03)',
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+            border: '1px solid #f0f0f0',
             overflow: 'hidden'
           }}
           title={
@@ -499,6 +565,200 @@ const Dashboard = () => {
             }}
           />
         </Card>
+
+        {/* Download Modal */}
+        <Modal
+          title={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <SecurityScanOutlined style={{ marginRight: '8px', color: '#00BF96' }} />
+              Secure File Download
+            </div>
+          }
+          open={downloadModalVisible}
+          onCancel={closeDownloadModal}
+          footer={null}
+          width={600}
+        >
+          {downloadLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <Spin size="large" />
+              <div style={{ marginTop: '16px' }}>Loading file information...</div>
+            </div>
+          ) : selectedFile ? (
+            <>
+              {downloadSuccess ? (
+                <Result
+                  status="success"
+                  title="File Downloaded Successfully!"
+                  subTitle="Your file has been downloaded securely."
+                  icon={<CheckCircleOutlined style={{ color: '#00BF96' }} />}
+                  extra={
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Space>
+                        <Button
+                          type="primary"
+                          className="gradient-button"
+                          onClick={closeDownloadModal}
+                        >
+                          Close
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setDownloadSuccess(false);
+                            setDownloadProgress(0);
+                          }}
+                          icon={<DownloadOutlined />}
+                        >
+                          Download Again
+                        </Button>
+                      </Space>
+                      <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                        <Text type="secondary">
+                          Check your downloads folder for the file. The file will open in your browser for viewing only.
+                        </Text>
+                      </div>
+                    </Space>
+                  }
+                />
+              ) : (
+                <>
+                  <Card
+                    style={{
+                      marginBottom: 24,
+                      borderRadius: '8px',
+                      background: '#fafafa',
+                      border: '1px solid #f0f0f0',
+                      boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)'
+                    }}
+                  >
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div style={{
+                          width: '64px',
+                          height: '64px',
+                          background: '#f0f7ff',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: '16px'
+                        }}>
+                          {getFileIcon(selectedFile.mimetype)}
+                        </div>
+                        <div>
+                          <Text strong style={{ fontSize: 18, display: 'block' }}>
+                            {selectedFile.filename || selectedFile.originalName}
+                          </Text>
+                          <Text type="secondary" style={{ fontSize: 14 }}>
+                            Size: {formatBytes(selectedFile.size)}
+                          </Text>
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 14 }}>
+                              Uploaded by: {selectedFile.uploadedBy?.name || 'Anonymous'}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Divider style={{ margin: '16px 0' }} />
+
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: '#fff7e6',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid #ffe7ba'
+                      }}>
+                        <FileProtectOutlined style={{ color: '#fa8c16', fontSize: '18px', marginRight: '12px' }} />
+                        <div>
+                          <Text strong style={{ color: '#d46b08' }}>Password Protected File</Text>
+                          <div>
+                            <Text type="warning">
+                              You need the correct password to download this file. The downloaded file will open in your browser for secure viewing only.
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                    </Space>
+                  </Card>
+
+                  {downloadError && (
+                    <Alert
+                      message="Download Error"
+                      description={downloadError}
+                      type="error"
+                      showIcon
+                      closable
+                      onClose={() => setDownloadError(null)}
+                      style={{ marginBottom: 24 }}
+                    />
+                  )}
+
+                  <Form
+                    form={downloadForm}
+                    name="download"
+                    onFinish={handleModalDownload}
+                    layout="vertical"
+                    size="large"
+                  >
+                    <Form.Item
+                      name="password"
+                      label="File Password"
+                      rules={[{ required: true, message: 'Please enter the file password!' }]}
+                    >
+                      <Input.Password
+                        prefix={<LockOutlined style={{ color: '#00BF96' }} />}
+                        placeholder="Enter the password provided by the sender"
+                        autoComplete="off"
+                      />
+                    </Form.Item>
+
+                    {downloading && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <Progress
+                          percent={downloadProgress}
+                          status={downloadProgress >= 100 ? "success" : "active"}
+                          strokeColor={{
+                            '0%': '#00BF96',
+                            '100%': '#00A080',
+                          }}
+                        />
+                        <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: '8px' }}>
+                          {downloadProgress < 100 ? 'Downloading file...' : 'Download complete!'}
+                        </Text>
+                      </div>
+                    )}
+
+                    <Form.Item>
+                      <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                        <Button onClick={closeDownloadModal}>
+                          Cancel
+                        </Button>
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          icon={<DownloadOutlined />}
+                          loading={downloading}
+                          className="gradient-button"
+                        >
+                          Download File
+                        </Button>
+                      </Space>
+                    </Form.Item>
+                  </Form>
+                </>
+              )}
+            </>
+          ) : (
+            <Result
+              status="error"
+              title="File Not Found"
+              subTitle="The file you are looking for does not exist or has expired."
+              icon={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
+            />
+          )}
+        </Modal>
       </div>
     </DashboardLayout>
   );

@@ -28,13 +28,45 @@ exports.protect = async (req, res, next) => {
 
     // Set user in request
     req.user = await User.findById(decoded.id);
-    
+
     next();
   } catch (err) {
     return res.status(401).json({
       success: false,
       message: 'Not authorized to access this route'
     });
+  }
+};
+
+// Optional authentication - populates req.user if token exists but doesn't require it
+exports.optionalAuth = async (req, res, next) => {
+  let token;
+
+  // Check if token exists in headers
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    // Set token from Bearer token in header
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  // If no token, continue without user
+  if (!token) {
+    return next();
+  }
+
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Set user in request
+    req.user = await User.findById(decoded.id);
+
+    next();
+  } catch (err) {
+    // If token is invalid, continue without user (don't throw error)
+    next();
   }
 };
 
