@@ -8,6 +8,7 @@ import {
   Alert,
   Divider,
   App,
+  Result,
   Grid,
   Row,
   Col
@@ -15,86 +16,132 @@ import {
 import {
   LockOutlined,
   SecurityScanOutlined,
-  ArrowLeftOutlined,
-  ReloadOutlined,
+  CheckCircleOutlined,
+  LoginOutlined,
   SafetyOutlined
 } from '@ant-design/icons';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { AUTH_API_URL } from '../config';
+import { AUTH_API_URL } from '../../config';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
 
-const OTPVerification = () => {
+const ResetPassword = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const location = useLocation();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
   const [email, setEmail] = useState('');
-  const [countdown, setCountdown] = useState(0);
   const screens = useBreakpoint();
 
   useEffect(() => {
+    // Check if reset token exists
+    const resetToken = localStorage.getItem('resetToken');
+    if (!resetToken) {
+      navigate('/forgot-password');
+      return;
+    }
+
     // Get email from location state
     if (location.state?.email) {
       setEmail(location.state.email);
-    } else {
-      // If no email is provided, redirect to forgot password page
-      navigate('/forgot-password');
     }
   }, [location, navigate]);
-
-  useEffect(() => {
-    // Countdown timer for resend button
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
 
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await axios.post(`${AUTH_API_URL}/verify-otp`, {
-        email,
-        otp: values.otp
-      });
+      const resetToken = localStorage.getItem('resetToken');
 
-      // Store the reset token
-      localStorage.setItem('resetToken', response.data.resetToken);
+      await axios.post(
+        `${AUTH_API_URL}/reset-password`,
+        { password: values.password },
+        {
+          headers: {
+            Authorization: `Bearer ${resetToken}`
+          }
+        }
+      );
 
-      message.success('OTP verified successfully');
-      navigate('/reset-password', { state: { email } });
+      // Clear reset token
+      localStorage.removeItem('resetToken');
+
+      setSuccess(true);
+      message.success('Password reset successful');
     } catch (err) {
-      console.error('OTP verification error:', err);
-      setError(err.response?.data?.message || 'Failed to verify OTP. Please try again.');
+      console.error('Password reset error:', err);
+      setError(err.response?.data?.message || 'Failed to reset password. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResendOTP = async () => {
-    try {
-      setResending(true);
-      setError(null);
-
-      await axios.post(`${AUTH_API_URL}/forgot-password`, { email });
-
-      message.success('New OTP sent to your email');
-      setCountdown(60); // Set 60 seconds countdown
-    } catch (err) {
-      console.error('Resend OTP error:', err);
-      setError(err.response?.data?.message || 'Failed to resend OTP. Please try again.');
-    } finally {
-      setResending(false);
-    }
+  const handleGoToLogin = () => {
+    navigate('/login');
   };
+
+  if (success) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%)',
+        animation: 'fadeIn 0.5s ease-in-out',
+        '@keyframes fadeIn': {
+          from: { opacity: 0 },
+          to: { opacity: 1 }
+        }
+      }}>
+        <Card style={{
+          width: '100%',
+          maxWidth: screens.xs ? '90%' : screens.sm ? '450px' : '420px',
+          padding: screens.xs ? '16px' : '24px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+          border: 'none',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(10px)',
+          transform: 'translateY(0)',
+          transition: 'all 0.3s ease'
+        }}>
+          <Result
+            status="success"
+            icon={<CheckCircleOutlined style={{ color: '#00BF96' }} />}
+            title="Password Reset Successful!"
+            subTitle="Your password has been reset successfully. You can now log in with your new password."
+            extra={[
+              <Button
+                type="primary"
+                key="login"
+                onClick={handleGoToLogin}
+                icon={<LoginOutlined />}
+                className="gradient-button"
+                style={{
+                  height: '36px',
+                  fontSize: '14px',
+                  borderRadius: '6px',
+                  fontWeight: '500',
+                  boxShadow: '0 4px 12px rgba(0, 191, 150, 0.3)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                Go to Login
+              </Button>
+            ]}
+          />
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -112,7 +159,7 @@ const OTPVerification = () => {
     }}>
       <Card style={{
         width: '100%',
-        maxWidth: screens.xs ? '90%' : screens.sm ? '400px' : '380px',
+        maxWidth: screens.xs ? '90%' : screens.sm ? '450px' : '420px',
         padding: screens.xs ? '16px' : '24px',
         borderRadius: '16px',
         boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
@@ -165,7 +212,7 @@ const OTPVerification = () => {
           fontWeight: '600',
           color: '#333'
         }}>
-          Verify OTP
+          Reset Password
         </Title>
 
         {error && (
@@ -189,31 +236,58 @@ const OTPVerification = () => {
 
         <Form
           form={form}
-          name="otpVerification"
+          name="resetPassword"
           onFinish={handleSubmit}
           layout="vertical"
           size="middle"
         >
           <Text style={{ marginBottom: '16px', display: 'block' }}>
-            Enter the One-Time Password (OTP) sent to <strong>{email}</strong>
+            Create a new password for your account {email && <strong>({email})</strong>}
           </Text>
 
           <Form.Item
-            name="otp"
+            name="password"
+            label={<span style={{ fontWeight: '500', fontSize: '13px' }}>New Password</span>}
             rules={[
-              { required: true, message: 'Please input the OTP!' },
-              { len: 6, message: 'OTP must be 6 digits!' },
-              { pattern: /^[0-9]+$/, message: 'OTP must contain only numbers!' }
+              { required: true, message: 'Please input your new password!' },
+              { min: 6, message: 'Password must be at least 6 characters!' }
             ]}
+            hasFeedback
+            style={{ marginBottom: '12px' }}
           >
-            <Input
+            <Input.Password
               prefix={<LockOutlined style={{ color: '#00BF96' }} />}
-              placeholder="Enter 6-digit OTP"
-              maxLength={6}
+              placeholder="Enter new password"
               style={{
-                letterSpacing: '8px',
-                textAlign: 'center',
-                fontSize: '20px',
+                borderRadius: '6px',
+                height: '36px',
+                transition: 'all 0.3s ease'
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="confirmPassword"
+            label={<span style={{ fontWeight: '500', fontSize: '13px' }}>Confirm Password</span>}
+            dependencies={['password']}
+            hasFeedback
+            rules={[
+              { required: true, message: 'Please confirm your password!' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('The two passwords do not match!'));
+                },
+              }),
+            ]}
+            style={{ marginBottom: '16px' }}
+          >
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#00BF96' }} />}
+              placeholder="Confirm new password"
+              style={{
                 borderRadius: '6px',
                 height: '36px',
                 transition: 'all 0.3s ease'
@@ -237,34 +311,18 @@ const OTPVerification = () => {
                 transition: 'all 0.3s ease'
               }}
             >
-              Verify OTP
+              Reset Password
             </Button>
           </Form.Item>
-
-          <div style={{ textAlign: 'center', marginTop: '8px' }}>
-            <Button
-              type="link"
-              onClick={handleResendOTP}
-              disabled={countdown > 0 || resending}
-              icon={<ReloadOutlined />}
-              style={{
-                color: '#00BF96',
-                fontSize: '12px',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
-            </Button>
-          </div>
         </Form>
 
         <Divider />
 
         <div style={{ textAlign: 'center' }}>
-          <Link to="/forgot-password">
+          <Link to="/login">
             <Button
               type="link"
-              icon={<ArrowLeftOutlined />}
+              icon={<LoginOutlined />}
               style={{
                 padding: '0',
                 fontWeight: '500',
@@ -273,7 +331,7 @@ const OTPVerification = () => {
                 transition: 'all 0.3s ease'
               }}
             >
-              Back to Forgot Password
+              Back to Login
             </Button>
           </Link>
         </div>
@@ -282,4 +340,4 @@ const OTPVerification = () => {
   );
 };
 
-export default OTPVerification;
+export default ResetPassword;

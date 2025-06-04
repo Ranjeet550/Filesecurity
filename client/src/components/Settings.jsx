@@ -26,7 +26,7 @@ import {
   ThunderboltOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '../components/DashboardLayout';
+import Sidebar from './Sidebar';
 import AuthContext from '../context/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
@@ -88,7 +88,7 @@ const Settings = () => {
   };
 
   return (
-    <DashboardLayout>
+    <Sidebar >
       <div className="settings-container">
         <Title level={2} style={{ marginBottom: '24px' }}>
           <SettingOutlined style={{ marginRight: '12px' }} />
@@ -306,7 +306,7 @@ const Settings = () => {
           </TabPane>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </Sidebar >
   );
 };
 

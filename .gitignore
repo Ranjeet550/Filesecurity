@@ -40,3 +40,7 @@ yarn-error.log*
 *.swp
 *.swo
 .DS_Store
+
+# Upload files
+server/uploads/
+uploads/

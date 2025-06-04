@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { Form, Input, Button, Card, Typography, Alert, Spin, Divider, Row, Col, Grid } from 'antd';
 import { UserOutlined, LockOutlined, SecurityScanOutlined, SafetyOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import AuthContext from '../context/AuthContext';
+import AuthContext from '../../context/AuthContext';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -208,27 +208,7 @@ const Login = () => {
               <Text type="secondary" style={{ fontSize: '12px' }}>OR</Text>
             </Divider>
 
-            <Row justify="center" style={{ marginTop: '8px' }}>
-              <Col>
-                <Text style={{ fontSize: '12px' }}>Don't have an account?</Text>
-                {' '}
-                <Link to="/register">
-                  <Button
-                    type="link"
-                    style={{
-                      padding: '0',
-                      fontWeight: '500',
-                      color: '#00BF96',
-                      fontSize: '12px',
-                      transition: 'all 0.3s ease'
-                    }}
-                    className="hover-scale"
-                  >
-                    Register now!
-                  </Button>
-                </Link>
-              </Col>
-            </Row>
+            
           </Form>
         </Spin>
 

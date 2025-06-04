@@ -3,10 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const { logActivity } = require('../middleware/logger');
 const { encryptFile } = require('../utils/fileEncryption');
+const { protectUploadedPDF, protectUploadedExcel } = require('../utils/pdfProtection');
 
 // @desc    Upload a file
 // @route   POST /api/files/upload
-// @access  Private
+// @access  Private (requires file_management create permission)
 exports.uploadFile = async (req, res) => {
   try {
     console.log('Upload request received');
@@ -70,12 +71,79 @@ exports.uploadFile = async (req, res) => {
 
     console.log('File MIME type for upload:', mimeType);
 
+    // Handle file protection based on file type
+    let finalFilePath = normalizedPath;
+    let finalFilename = req.file.filename;
+    let finalSize = req.file.size;
+
+    if (mimeType === 'application/pdf') {
+      try {
+        console.log('PDF file detected, applying password protection...');
+        const protectionResult = await protectUploadedPDF(
+          normalizedPath,
+          password,
+          req.file.originalname
+        );
+
+        if (protectionResult.success) {
+          finalFilePath = protectionResult.protectedFilePath;
+          finalFilename = protectionResult.protectedFileName;
+
+          // Get the size of the protected PDF
+          const stats = fs.statSync(finalFilePath);
+          finalSize = stats.size;
+
+          console.log('PDF protection successful:', {
+            originalPath: normalizedPath,
+            protectedPath: finalFilePath,
+            originalSize: req.file.size,
+            protectedSize: finalSize
+          });
+        }
+      } catch (error) {
+        console.error('Error protecting PDF:', error);
+        // Continue with original file if protection fails
+        console.log('Continuing with original file due to protection error');
+      }
+    } else if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+               mimeType === 'application/vnd.ms-excel') {
+      try {
+        console.log('Excel file detected, applying password protection...');
+        const protectionResult = await protectUploadedExcel(
+          normalizedPath,
+          password,
+          req.file.originalname
+        );
+
+        if (protectionResult.success) {
+          finalFilePath = protectionResult.protectedFilePath;
+          finalFilename = protectionResult.protectedFileName;
+
+          // Get the size of the protected Excel file
+          const stats = fs.statSync(finalFilePath);
+          finalSize = stats.size;
+
+          console.log('Excel protection successful:', {
+            originalPath: normalizedPath,
+            protectedPath: finalFilePath,
+            originalSize: req.file.size,
+            protectedSize: finalSize,
+            protection: protectionResult.protection
+          });
+        }
+      } catch (error) {
+        console.error('Error protecting Excel file:', error);
+        // Continue with original file if protection fails
+        console.log('Continuing with original file due to protection error');
+      }
+    }
+
     // Create file record in database
     const file = await File.create({
-      filename: req.file.filename,
+      filename: finalFilename,
       originalName: req.file.originalname,
-      path: normalizedPath,
-      size: req.file.size,
+      path: finalFilePath,
+      size: finalSize,
       mimetype: mimeType,
       password: password,
       uploadedBy: req.user.id,
@@ -121,22 +189,53 @@ exports.uploadFile = async (req, res) => {
   }
 };
 
-// @desc    Get all files uploaded by user
+// @desc    Get all files uploaded by user (or all files for admin)
 // @route   GET /api/files
-// @access  Private
+// @access  Private (requires file_management read permission)
 exports.getFiles = async (req, res) => {
   try {
-    const files = await File.find({ uploadedBy: req.user.id })
-      .select('originalName size createdAt expiresAt downloads mimetype')
+    let query = {};
+    let selectFields = 'originalName size createdAt expiresAt downloads mimetype';
+    let populateOptions = null;
+
+    // Check if user has admin role
+    const userRole = req.user.role;
+    const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+
+    if (isAdmin) {
+      // Admin can see all files with uploader information
+      query = {}; // No filter - get all files
+      selectFields += ' uploadedBy';
+      populateOptions = {
+        path: 'uploadedBy',
+        select: 'name email'
+      };
+      console.log('Admin user requesting all files');
+    } else {
+      // Regular users can only see their own files
+      query = { uploadedBy: req.user.id };
+      console.log(`Regular user ${req.user.email} requesting their files`);
+    }
+
+    let filesQuery = File.find(query)
+      .select(selectFields)
       .sort('-createdAt');
+
+    // Populate uploadedBy field for admin users
+    if (populateOptions) {
+      filesQuery = filesQuery.populate(populateOptions);
+    }
+
+    const files = await filesQuery;
 
     res.status(200).json({
       success: true,
       count: files.length,
-      data: files
+      data: files,
+      isAdmin: isAdmin
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error in getFiles:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -146,7 +245,7 @@ exports.getFiles = async (req, res) => {
 
 // @desc    Get file by ID
 // @route   GET /api/files/:id
-// @access  Private
+// @access  Private (requires file_management read permission)
 exports.getFile = async (req, res) => {
   try {
     const file = await File.findById(req.params.id);
@@ -158,8 +257,12 @@ exports.getFile = async (req, res) => {
       });
     }
 
-    // Check if user is the owner of the file
-    if (file.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // Check if user is the owner of the file or admin
+    // Permission middleware already checked for file_management read permission
+    const userRole = req.userRole || req.user.role;
+    const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+
+    if (file.uploadedBy.toString() !== req.user.id && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this file'
@@ -173,7 +276,6 @@ exports.getFile = async (req, res) => {
         filename: file.originalName,
         size: file.size,
         uploadedAt: file.createdAt,
-        expiresAt: file.expiresAt,
         downloads: file.downloads.length
       }
     });
@@ -206,14 +308,6 @@ exports.downloadFile = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'File not found'
-      });
-    }
-
-    // Check if file has expired
-    if (new Date() > new Date(file.expiresAt)) {
-      return res.status(400).json({
-        success: false,
-        message: 'File has expired'
       });
     }
 
@@ -354,48 +448,82 @@ exports.downloadFile = async (req, res) => {
       const absolutePath = path.resolve(filePath);
       console.log('File absolute path:', absolutePath);
 
-      // Create a password-protected version of the file
-      console.log('Encrypting file with password:', password);
-      const encryptedFilePath = await encryptFile(
-        absolutePath,
-        password,
-        file.originalName,
-        mimeType
-      );
-      console.log('Encrypted file created at:', encryptedFilePath);
+      // Handle protected files differently - serve them directly
+      if (mimeType === 'application/pdf') {
+        console.log('Serving password-protected PDF directly');
 
-      // Set a new filename for the encrypted file
-      const encryptedFileName = `${path.basename(file.originalName, path.extname(file.originalName))}_protected.html`;
+        // Set headers for PDF download with original filename
+        res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Pragma', 'no-cache');
 
-      // Set headers to force download and prevent navigation
-      res.setHeader('Content-Disposition', `attachment; filename="${encryptedFileName}"`);
-      res.setHeader('Content-Type', 'text/html');
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Pragma', 'no-cache');
+        // Log headers for debugging
+        console.log('PDF Response headers:', res.getHeaders());
 
-      // Log all headers for debugging
-      console.log('Response headers:', res.getHeaders());
+        // Send the password-protected PDF directly
+        fs.createReadStream(absolutePath).pipe(res);
+      } else if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                 mimeType === 'application/vnd.ms-excel') {
+        console.log('Serving password-protected Excel file directly');
 
-      // Send the encrypted file
-      fs.createReadStream(encryptedFilePath).pipe(res);
+        // Set headers for Excel download with original filename
+        res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Pragma', 'no-cache');
 
-      // Delete the encrypted file after sending
-      res.on('finish', () => {
-        try {
-          if (fs.existsSync(encryptedFilePath)) {
-            fs.unlinkSync(encryptedFilePath);
-            console.log('Temporary encrypted file deleted:', encryptedFilePath);
+        // Log headers for debugging
+        console.log('Excel Response headers:', res.getHeaders());
+
+        // Send the password-protected Excel file directly
+        fs.createReadStream(absolutePath).pipe(res);
+      } else {
+        // For non-PDF files, use the existing encryption method
+        console.log('Encrypting non-PDF file with password:', password);
+        const encryptedFilePath = await encryptFile(
+          absolutePath,
+          password,
+          file.originalName,
+          mimeType
+        );
+        console.log('Encrypted file created at:', encryptedFilePath);
+
+        // Set a new filename for the encrypted file
+        const encryptedFileName = `${path.basename(file.originalName, path.extname(file.originalName))}_protected.html`;
+
+        // Set headers to force download and prevent navigation
+        res.setHeader('Content-Disposition', `attachment; filename="${encryptedFileName}"`);
+        res.setHeader('Content-Type', 'text/html');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Pragma', 'no-cache');
+
+        // Log all headers for debugging
+        console.log('Response headers:', res.getHeaders());
+
+        // Send the encrypted file
+        fs.createReadStream(encryptedFilePath).pipe(res);
+
+        // Delete the encrypted file after sending
+        res.on('finish', () => {
+          try {
+            if (fs.existsSync(encryptedFilePath)) {
+              fs.unlinkSync(encryptedFilePath);
+              console.log('Temporary encrypted file deleted:', encryptedFilePath);
+            }
+          } catch (error) {
+            console.error('Error deleting temporary encrypted file:', error);
           }
-        } catch (error) {
-          console.error('Error deleting temporary encrypted file:', error);
-        }
-      });
+        });
+      }
     } catch (error) {
-      console.error('Error encrypting file:', error);
+      console.error('Error processing file for download:', error);
       return res.status(500).json({
         success: false,
-        message: 'Error encrypting file'
+        message: 'Error processing file for download'
       });
     }
   } catch (error) {
@@ -409,7 +537,7 @@ exports.downloadFile = async (req, res) => {
 
 // @desc    Get file password for sharing
 // @route   GET /api/files/:id/password
-// @access  Private
+// @access  Private (requires file_management read permission)
 exports.getFilePassword = async (req, res) => {
   try {
     const file = await File.findById(req.params.id);
@@ -421,8 +549,11 @@ exports.getFilePassword = async (req, res) => {
       });
     }
 
-    // Check if user is the owner of the file
-    if (file.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // Check if user is the owner of the file or admin
+    const userRole = req.user.role;
+    const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+
+    if (file.uploadedBy.toString() !== req.user.id && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this file'
@@ -464,7 +595,7 @@ exports.getFilePassword = async (req, res) => {
 
 // @desc    Delete file
 // @route   DELETE /api/files/:id
-// @access  Private
+// @access  Private (requires file_management delete permission)
 exports.deleteFile = async (req, res) => {
   try {
     const file = await File.findById(req.params.id);
@@ -476,8 +607,13 @@ exports.deleteFile = async (req, res) => {
       });
     }
 
-    // Check if user is the owner of the file
-    if (file.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // Check if user is the owner of the file or has admin role
+    // Permission middleware already checked for file_management delete permission
+    const userRole = req.userRole || req.user.role;
+    const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+
+    // Allow deletion if user is admin or owner of the file
+    if (file.uploadedBy.toString() !== req.user.id && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this file'

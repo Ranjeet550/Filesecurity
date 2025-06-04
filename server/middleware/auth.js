@@ -26,8 +26,9 @@ exports.protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Set user in request
-    req.user = await User.findById(decoded.id);
+    // Set user in request with role populated
+    req.user = await User.findById(decoded.id).populate('role');
+    console.log(`Auth: User ${req.user?.email} authenticated with role: ${req.user?.role?.name}`);
 
     next();
   } catch (err) {
@@ -60,8 +61,8 @@ exports.optionalAuth = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Set user in request
-    req.user = await User.findById(decoded.id);
+    // Set user in request with role populated
+    req.user = await User.findById(decoded.id).populate('role');
 
     next();
   } catch (err) {
@@ -70,13 +71,20 @@ exports.optionalAuth = async (req, res, next) => {
   }
 };
 
-// Grant access to specific roles
-exports.authorize = (...roles) => {
+// Grant access to specific roles (deprecated - use checkPermission instead)
+exports.authorize = (...roleNames) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!req.user || !req.user.role) {
       return res.status(403).json({
         success: false,
-        message: `User role ${req.user.role} is not authorized to access this route`
+        message: 'User role not found'
+      });
+    }
+
+    if (!roleNames.includes(req.user.role.name)) {
+      return res.status(403).json({
+        success: false,
+        message: `User role ${req.user.role.name} is not authorized to access this route`
       });
     }
     next();

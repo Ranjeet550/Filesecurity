@@ -8,4 +8,4 @@ export const USERS_API_URL = `${API_BASE_URL}/users`;
 
 // Other configuration
 export const APP_NAME = 'Secure File Transfer';
-export const STORAGE_LIMIT = 1024 * 1024 * 1024; // 1GB
+// Unlimited storage - no storage limits

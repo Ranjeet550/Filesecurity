@@ -61,14 +61,6 @@ const FileSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  },
-  expiresAt: {
-    type: Date,
-    default: function() {
-      // Default expiry is 30 days from now
-      const now = new Date();
-      return new Date(now.setDate(now.getDate() + 30));
-    }
   }
 });
 

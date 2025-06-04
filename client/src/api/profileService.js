@@ -68,15 +68,6 @@ export const uploadProfilePicture = async (file) => {
     const response = await api.post(`${AUTH_API_URL}/profile-picture`, formData);
     console.log('Profile picture upload response:', response.data);
 
-    // Update user in localStorage with new profile picture
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user && response.data && response.data.data && response.data.data.profilePicture) {
-      user.profilePicture = response.data.data.profilePicture;
-      localStorage.setItem('user', JSON.stringify(user));
-    } else {
-      console.warn('Could not update user profile picture in localStorage:', response.data);
-    }
-
     return response.data;
   } catch (error) {
     console.error('Error uploading profile picture:', error);

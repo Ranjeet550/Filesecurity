@@ -34,9 +34,9 @@ const UserSchema = new mongoose.Schema({
     default: ''
   },
   role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Role',
+    required: true
   },
   lastLogin: {
     type: Date,
@@ -69,7 +69,7 @@ UserSchema.pre('save', async function(next) {
 // Sign JWT and return
 UserSchema.methods.getSignedJwtToken = function(expiresInSeconds) {
   return jwt.sign(
-    { id: this._id, role: this.role },
+    { id: this._id, roleId: this.role._id || this.role },
     process.env.JWT_SECRET,
     { expiresIn: expiresInSeconds || process.env.JWT_EXPIRE }
   );

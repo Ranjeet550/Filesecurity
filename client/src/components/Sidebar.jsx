@@ -13,7 +13,9 @@ import {
   BellOutlined,
   SettingOutlined,
   LockOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  SafetyOutlined,
+  KeyOutlined
 } from '@ant-design/icons';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
@@ -21,7 +23,7 @@ import AuthContext from '../context/AuthContext';
 const { Header, Sider, Content, Footer } = Layout;
 const { useBreakpoint } = Grid;
 
-const DashboardLayout = ({ children }) => {
+const Sidebar = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -161,11 +163,28 @@ const DashboardLayout = ({ children }) => {
               label: <Link to="/upload" style={{ fontWeight: '500' }}>Upload File</Link>,
             },
 
-            ...(user?.role === 'admin' ? [
+            ...(user?.role?.name === 'admin' ? [
               {
-                key: '/users',
+                key: 'user-management',
                 icon: <TeamOutlined style={{ fontSize: '16px' }} />,
-                label: <Link to="/users" style={{ fontWeight: '500' }}>User Management</Link>,
+                label: 'User Management',
+                children: [
+                  {
+                    key: '/users',
+                    icon: <UserOutlined style={{ fontSize: '14px' }} />,
+                    label: <Link to="/users" style={{ fontWeight: '500' }}>Users</Link>,
+                  },
+                  {
+                    key: '/roles',
+                    icon: <SafetyOutlined style={{ fontSize: '14px' }} />,
+                    label: <Link to="/roles" style={{ fontWeight: '500' }}>Roles</Link>,
+                  },
+                  {
+                    key: '/permissions',
+                    icon: <KeyOutlined style={{ fontSize: '14px' }} />,
+                    label: <Link to="/permissions" style={{ fontWeight: '500' }}>Permissions</Link>,
+                  }
+                ]
               },
             ] : []),
           ]}
@@ -299,7 +318,7 @@ const DashboardLayout = ({ children }) => {
                     fontSize: '12px',
                     color: '#8c8c8c',
                     lineHeight: '1.2'
-                  }}>{user?.role}</div>
+                  }}>{user?.role?.displayName || user?.role?.name || user?.role}</div>
                 </div>
               </div>
             </Dropdown>
@@ -329,4 +348,4 @@ const DashboardLayout = ({ children }) => {
   );
 };
 
-export default DashboardLayout;
+export default Sidebar ;

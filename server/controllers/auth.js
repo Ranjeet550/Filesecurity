@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Role = require('../models/Role');
 const OTP = require('../models/OTP');
 const { generateOTP, sendOTPEmail } = require('../utils/emailService');
 const fs = require('fs');
@@ -21,14 +22,39 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Get default role if not provided
+    let roleId = role;
+    if (!role) {
+      const defaultRole = await Role.findOne({ name: 'user' });
+      if (!defaultRole) {
+        return res.status(500).json({
+          success: false,
+          message: 'Default user role not found. Please contact administrator.'
+        });
+      }
+      roleId = defaultRole._id;
+    } else {
+      // Validate provided role
+      const roleExists = await Role.findById(role);
+      if (!roleExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid role specified'
+        });
+      }
+    }
+
     // Create user
     const user = await User.create({
       name,
       email,
       password,
-      role: role || 'user',
+      role: roleId,
       lastLoginLocation: req.userLocation
     });
+
+    // Populate role for response
+    await user.populate('role', 'name displayName');
 
     // Generate token
     const token = user.getSignedJwtToken();
@@ -90,7 +116,7 @@ exports.login = async (req, res) => {
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password').populate('role', 'name displayName');
     if (!user) {
       // Log failed login attempt for non-existent user
       await logActivity({
@@ -143,6 +169,8 @@ exports.login = async (req, res) => {
         message: 'Invalid credentials'
       });
     }
+
+
 
     // Update last login time and location
     user.lastLogin = Date.now();
@@ -197,7 +225,20 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id)
+      .select('-password')
+      .populate({
+        path: 'role',
+        select: 'name displayName permissions',
+        populate: {
+          path: 'permissions',
+          populate: {
+            path: 'module',
+            model: 'Module',
+            select: 'name displayName'
+          }
+        }
+      });
 
     res.status(200).json({
       success: true,
@@ -211,6 +252,44 @@ exports.getMe = async (req, res) => {
         lastLogin: user.lastLogin,
         lastLoginLocation: user.lastLoginLocation,
         createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Refresh token
+// @route   POST /api/auth/refresh-token
+// @access  Private
+exports.refreshToken = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate('role', 'name displayName');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Generate new token
+    const token = user.getSignedJwtToken();
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profilePicture: user.profilePicture,
+        bio: user.bio
       }
     });
   } catch (error) {
@@ -238,6 +317,8 @@ exports.updateProfile = async (req, res) => {
         message: 'User not found'
       });
     }
+
+
 
     // Update fields
     if (name) user.name = name;
@@ -307,6 +388,8 @@ exports.uploadProfilePicture = async (req, res) => {
         fs.unlinkSync(oldPicturePath);
       }
     }
+
+
 
     // Set the new profile picture path
     // Store the relative path to the file
@@ -474,6 +557,8 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
+
+
     // Update password
     user.password = password;
     await user.save();
@@ -516,6 +601,8 @@ exports.changePassword = async (req, res) => {
         message: 'Current password is incorrect'
       });
     }
+
+
 
     // Update password
     user.password = newPassword;

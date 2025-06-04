@@ -31,8 +31,9 @@ import {
   EnvironmentOutlined,
   SafetyOutlined
 } from '@ant-design/icons';
-import DashboardLayout from '../components/DashboardLayout';
-import { getUsers, createUser, updateUser, deleteUser } from '../api/userService';
+import Sidebar from '../../components/Sidebar';
+import { getUsers, createUser, updateUser, deleteUser } from '../../api/userService';
+import { getRoles } from '../../api/roleService';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -40,6 +41,7 @@ const { Option } = Select;
 const UserManagement = () => {
   const { message } = App.useApp();
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState('create'); // 'create' or 'edit'
@@ -59,15 +61,30 @@ const UserManagement = () => {
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const response = await getRoles();
+      setRoles(response.data);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      message.error('Failed to fetch roles');
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchRoles();
   }, []);
 
   const showCreateModal = () => {
     setModalType('create');
     setSelectedUser(null);
     form.resetFields();
-    form.setFieldsValue({ role: 'user' }); // Default role
+    // Set default role to 'user' role if available
+    const defaultRole = roles.find(role => role.name === 'user');
+    if (defaultRole) {
+      form.setFieldsValue({ role: defaultRole._id });
+    }
     setModalVisible(true);
   };
 
@@ -77,7 +94,7 @@ const UserManagement = () => {
     form.setFieldsValue({
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role?._id || user.role
     });
     setModalVisible(true);
   };
@@ -120,7 +137,9 @@ const UserManagement = () => {
   // Get user statistics
   const getUserStats = () => {
     const totalUsers = users.length;
-    const adminUsers = users.filter(user => user.role === 'admin').length;
+    const adminUsers = users.filter(user =>
+      user.role?.name === 'admin' || user.role === 'admin'
+    ).length;
     const regularUsers = totalUsers - adminUsers;
     const activeUsers = users.filter(user => user.lastLogin).length;
 
@@ -152,6 +171,16 @@ const UserManagement = () => {
 
   const columns = [
     {
+      title: 'SN.',
+      key: 'serialNumber',
+      width: '8%',
+      render: (_, __, index) => (
+        <div style={{ textAlign: 'center', fontWeight: '500' }}>
+          {index + 1}
+        </div>
+      ),
+    },
+    {
       title: 'User',
       dataIndex: 'name',
       key: 'name',
@@ -177,21 +206,20 @@ const UserManagement = () => {
       dataIndex: 'role',
       key: 'role',
       width: '15%',
-      render: (role) => (
-        <Tag color={role === 'admin' ? '#00BF96' : '#1890ff'} style={{ borderRadius: '12px', padding: '0 8px' }}>
-          {role === 'admin' ? (
+      render: (role) => {
+        const roleName = role?.name || role;
+        const roleDisplay = role?.displayName || roleName;
+        const isAdmin = roleName === 'admin';
+
+        return (
+          <Tag color={isAdmin ? '#00BF96' : '#1890ff'} style={{ borderRadius: '12px', padding: '0 8px' }}>
             <Space>
-              <SafetyOutlined />
-              Admin
+              {isAdmin ? <SafetyOutlined /> : <UserOutlined />}
+              {roleDisplay}
             </Space>
-          ) : (
-            <Space>
-              <UserOutlined />
-              User
-            </Space>
-          )}
-        </Tag>
-      ),
+          </Tag>
+        );
+      },
     },
     {
       title: 'Last Login',
@@ -266,56 +294,14 @@ const UserManagement = () => {
   ];
 
   return (
-    <DashboardLayout>
+    <Sidebar >
       <div className="fade-in">
         <div style={{ marginBottom: '24px' }}>
           <Title level={3} style={{ margin: '0 0 8px 0' }}>User Management</Title>
           <Text type="secondary">Manage users and their access permissions</Text>
         </div>
 
-        <Row gutter={24} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="stat-card primary-card">
-              <Statistic
-                title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Total Users</span>}
-                value={stats.totalUsers}
-                valueStyle={{ color: 'white' }}
-                prefix={<TeamOutlined />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="stat-card info-card">
-              <Statistic
-                title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Regular Users</span>}
-                value={stats.regularUsers}
-                valueStyle={{ color: 'white' }}
-                prefix={<UserOutlined />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="stat-card warning-card">
-              <Statistic
-                title={<span style={{ color: 'rgba(255,255,255,0.85)' }}>Admin Users</span>}
-                value={stats.adminUsers}
-                valueStyle={{ color: 'white' }}
-                prefix={<SafetyOutlined />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="stat-card" style={{ background: '#fff' }}>
-              <Statistic
-                title="Active Users"
-                value={stats.activeUsers}
-                valueStyle={{ color: '#00BF96' }}
-                prefix={<UserOutlined />}
-                suffix={<small style={{ fontSize: '14px' }}>/{stats.totalUsers}</small>}
-              />
-            </Card>
-          </Col>
-        </Row>
+        
 
         <Card
           className="dashboard-card"
@@ -434,23 +420,19 @@ const UserManagement = () => {
             rules={[{ required: true, message: 'Please select role' }]}
           >
             <Select placeholder="Select user role">
-              <Option value="user">
-                <Space>
-                  <UserOutlined />
-                  Regular User
-                </Space>
-              </Option>
-              <Option value="admin">
-                <Space>
-                  <SafetyOutlined />
-                  Administrator
-                </Space>
-              </Option>
+              {roles.map(role => (
+                <Option key={role._id} value={role._id}>
+                  <Space>
+                    {role.name === 'admin' ? <SafetyOutlined /> : <UserOutlined />}
+                    {role.displayName}
+                  </Space>
+                </Option>
+              ))}
             </Select>
           </Form.Item>
         </Form>
       </Modal>
-    </DashboardLayout>
+    </Sidebar >
   );
 };
 

@@ -3,6 +3,7 @@ const {
   register,
   login,
   getMe,
+  refreshToken,
   updateProfile,
   uploadProfilePicture,
   forgotPassword,
@@ -23,6 +24,7 @@ router.use(trackLocation);
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, getMe);
+router.post('/refresh-token', protect, refreshToken);
 
 // Profile routes
 router.put('/profile', protect, updateProfile);

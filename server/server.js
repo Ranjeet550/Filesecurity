@@ -13,6 +13,9 @@ const authRoutes = require('./routes/auth');
 const fileRoutes = require('./routes/files');
 const userRoutes = require('./routes/users');
 const activityRoutes = require('./routes/activities');
+const moduleRoutes = require('./routes/modules');
+const permissionRoutes = require('./routes/permissions');
+const roleRoutes = require('./routes/roles');
 
 // Import middleware
 const { activityLogger, logActivity } = require('./middleware/logger');
@@ -49,6 +52,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/activities', activityRoutes);
+app.use('/api/modules', moduleRoutes);
+app.use('/api/permissions', permissionRoutes);
+app.use('/api/roles', roleRoutes);
 
 // Server port
 const PORT = process.env.PORT || 5000;

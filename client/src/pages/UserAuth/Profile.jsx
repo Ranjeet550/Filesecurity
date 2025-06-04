@@ -25,8 +25,8 @@ import {
   EnvironmentOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
-import DashboardLayout from '../components/DashboardLayout';
-import AuthContext from '../context/AuthContext';
+import Sidebar from '../../components/Sidebar';
+import AuthContext from '../../context/AuthContext';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -37,6 +37,7 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [fileList, setFileList] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { message } = App.useApp();
 
   // Custom CSS for avatar hover effect
@@ -53,6 +54,8 @@ const Profile = () => {
         email: user.email,
         bio: user.bio || ''
       });
+      // Update refresh key when user data changes
+      setRefreshKey(prev => prev + 1);
     }
   }, [user, form]);
 
@@ -62,13 +65,25 @@ const Profile = () => {
 
   const handleSubmit = async (values) => {
     try {
-      await updateUserProfile({
+      const result = await updateUserProfile({
         name: values.name,
         bio: values.bio
       });
+
+      // Update form with the latest data from the response
+      if (result && result.data && result.data.data) {
+        form.setFieldsValue({
+          name: result.data.data.name,
+          email: result.data.data.email,
+          bio: result.data.data.bio || ''
+        });
+      }
+
       setEditing(false);
+      setRefreshKey(prev => prev + 1); // Force re-render
       message.success('Profile updated successfully');
     } catch (error) {
+      console.error('Profile update error:', error);
       message.error('Failed to update profile');
     }
   };
@@ -89,7 +104,7 @@ const Profile = () => {
       setFileList([]);
 
       // Force a re-render to ensure the new profile picture is displayed
-      // This is already handled by the AuthContext updating the user state
+      setRefreshKey(prev => prev + 1);
 
       message.success('Profile picture updated successfully');
     } catch (error) {
@@ -109,13 +124,6 @@ const Profile = () => {
       const isImage = file.type.startsWith('image/');
       if (!isImage) {
         message.error('You can only upload image files!');
-        return Upload.LIST_IGNORE;
-      }
-
-      // Check file size (2MB limit)
-      const isLt2M = file.size / 1024 / 1024 < 2;
-      if (!isLt2M) {
-        message.error('Image must be smaller than 2MB!');
         return Upload.LIST_IGNORE;
       }
 
@@ -141,28 +149,28 @@ const Profile = () => {
   };
 
   return (
-    <DashboardLayout>
+    <Sidebar>
       {/* Add style tag for custom CSS */}
       <style>{avatarOverlayStyle}</style>
 
-      <div className="profile-container">
-        <Title level={2} style={{ marginBottom: '24px' }}>
-          <UserOutlined style={{ marginRight: '12px' }} />
+      <div className="profile-container" style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <Title level={4} style={{ marginBottom: '16px', fontSize: '18px' }}>
+          <UserOutlined style={{ marginRight: '8px', fontSize: '16px' }} />
           My Profile
         </Title>
 
-        <Row gutter={[24, 24]}>
+        <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
             <Card
               className="profile-card"
               style={{
-                borderRadius: '12px',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                 overflow: 'hidden',
-                transition: 'all 0.3s ease'
+                padding: '12px'
               }}
             >
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                 <Upload {...uploadProps}>
                   <Tooltip title="Click to update profile picture">
                     <div className="avatar-upload-wrapper" style={{
@@ -173,17 +181,18 @@ const Profile = () => {
                       transition: 'all 0.3s ease'
                     }}>
                       <Avatar
-                        size={120}
-                        src={user?.profilePicture ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.profilePicture}` : null}
+                        key={`${user?.profilePicture || 'default'}-${refreshKey}`}
+                        size={80}
+                        src={user?.profilePicture ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.profilePicture}?v=${refreshKey}` : null}
                         style={{
                           backgroundColor: user?.profilePicture ? 'transparent' : '#00BF96',
-                          boxShadow: '0 4px 12px rgba(0, 191, 150, 0.2)',
+                          boxShadow: '0 2px 6px rgba(0, 191, 150, 0.2)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '36px',
+                          fontSize: '24px',
                           fontWeight: 'bold',
-                          border: '4px solid #f5f5f5'
+                          border: '2px solid #f5f5f5'
                         }}
                         onError={() => {
                           console.log('Avatar image failed to load');
@@ -207,7 +216,7 @@ const Profile = () => {
                         justifyContent: 'center',
                         ':hover': { opacity: 1 }
                       }} className="avatar-overlay">
-                        <CameraOutlined style={{ fontSize: '24px', color: 'white' }} />
+                        <CameraOutlined style={{ fontSize: '18px', color: 'white' }} />
                       </div>
                     </div>
                   </Tooltip>
@@ -220,44 +229,45 @@ const Profile = () => {
                     loading={uploading}
                     size="small"
                     style={{
-                      marginTop: '8px',
-                      borderRadius: '20px',
+                      marginTop: '6px',
+                      borderRadius: '16px',
                       background: '#00BF96',
-                      border: 'none'
+                      border: 'none',
+                      fontSize: '12px'
                     }}
                   >
                     Upload New Picture
                   </Button>
                 )}
 
-                <Title level={4} style={{ marginTop: '16px', marginBottom: '4px' }}>
+                <Title level={5} style={{ marginTop: '12px', marginBottom: '2px', fontSize: '16px' }} key={`name-${refreshKey}`}>
                   {user?.name}
                 </Title>
-                <Text type="secondary">{user?.email}</Text>
-                <div style={{ marginTop: '8px' }}>
-                  <Tag color={user?.role === 'admin' ? '#00BF96' : '#1890ff'}>
+                <Text type="secondary" style={{ fontSize: '13px' }} key={`email-${refreshKey}`}>{user?.email}</Text>
+                <div style={{ marginTop: '6px' }} key={`role-${refreshKey}`}>
+                  <Tag color={user?.role === 'admin' ? '#00BF96' : '#1890ff'} style={{ fontSize: '12px' }}>
                     {user?.role === 'admin' ? 'Administrator' : 'User'}
                   </Tag>
                 </div>
               </div>
 
-              <Divider />
+              <Divider style={{ margin: '12px 0' }} />
 
-              <div style={{ marginBottom: '12px' }}>
-                <Text type="secondary" style={{ display: 'block', marginBottom: '4px' }}>
-                  <ClockCircleOutlined style={{ marginRight: '8px' }} />
+              <div style={{ marginBottom: '10px' }}>
+                <Text type="secondary" style={{ display: 'block', marginBottom: '3px', fontSize: '12px' }}>
+                  <ClockCircleOutlined style={{ marginRight: '6px', fontSize: '12px' }} />
                   Last Login:
                 </Text>
-                <Text>{formatDate(user?.lastLogin)}</Text>
+                <Text style={{ fontSize: '13px' }}>{formatDate(user?.lastLogin)}</Text>
               </div>
 
               {user?.lastLoginLocation && (
                 <div>
-                  <Text type="secondary" style={{ display: 'block', marginBottom: '4px' }}>
-                    <EnvironmentOutlined style={{ marginRight: '8px' }} />
+                  <Text type="secondary" style={{ display: 'block', marginBottom: '3px', fontSize: '12px' }}>
+                    <EnvironmentOutlined style={{ marginRight: '6px', fontSize: '12px' }} />
                     Last Location:
                   </Text>
-                  <Text>
+                  <Text style={{ fontSize: '13px' }}>
                     {user.lastLoginLocation.city}, {user.lastLoginLocation.country}
                   </Text>
                 </div>
@@ -269,31 +279,39 @@ const Profile = () => {
             <Card
               className="profile-card"
               title={
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <InfoCircleOutlined style={{ marginRight: '8px', color: '#00BF96' }} />
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+                  <InfoCircleOutlined style={{ marginRight: '6px', color: '#00BF96', fontSize: '14px' }} />
                   Profile Information
                 </div>
               }
               extra={
                 <Button
                   type={editing ? 'primary' : 'default'}
-                  icon={editing ? <SaveOutlined /> : <EditOutlined />}
+                  icon={editing ? <SaveOutlined style={{ fontSize: '12px' }} /> : <EditOutlined style={{ fontSize: '12px' }} />}
                   onClick={handleEditToggle}
                   className={editing ? 'gradient-button' : ''}
+                  size="small"
+                  style={{ fontSize: '12px' }}
                 >
                   {editing ? 'Cancel' : 'Edit Profile'}
                 </Button>
               }
+              style={{
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                padding: '12px'
+              }}
             >
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <Spin size="large" />
+                <div style={{ textAlign: 'center', padding: '24px' }}>
+                  <Spin size="default" />
                 </div>
               ) : (
                 <Form
                   form={form}
                   layout="vertical"
                   onFinish={handleSubmit}
+                  size="middle"
                   initialValues={{
                     name: user?.name || '',
                     email: user?.email || '',
@@ -302,57 +320,65 @@ const Profile = () => {
                 >
                   <Form.Item
                     name="name"
-                    label="Full Name"
+                    label={<span style={{ fontSize: '14px' }}>Full Name</span>}
                     rules={[
                       { required: true, message: 'Please enter your name' },
                       { max: 50, message: 'Name cannot be longer than 50 characters' }
                     ]}
+                    style={{ marginBottom: '16px' }}
                   >
                     <Input
-                      prefix={<UserOutlined style={{ color: '#00BF96' }} />}
+                      prefix={<UserOutlined style={{ color: '#00BF96', fontSize: '14px' }} />}
                       placeholder="Your full name"
                       disabled={!editing}
+                      style={{ fontSize: '14px' }}
                     />
                   </Form.Item>
 
                   <Form.Item
                     name="email"
-                    label="Email Address"
+                    label={<span style={{ fontSize: '14px' }}>Email Address</span>}
+                    style={{ marginBottom: '16px' }}
                   >
                     <Input
-                      prefix={<MailOutlined style={{ color: '#00BF96' }} />}
+                      prefix={<MailOutlined style={{ color: '#00BF96', fontSize: '14px' }} />}
                       placeholder="Your email address"
                       disabled={true}
+                      style={{ fontSize: '14px' }}
                     />
                   </Form.Item>
 
                   <Form.Item
                     name="bio"
-                    label="Bio"
+                    label={<span style={{ fontSize: '14px' }}>Bio</span>}
                     rules={[
                       { max: 200, message: 'Bio cannot be longer than 200 characters' }
                     ]}
+                    style={{ marginBottom: '16px' }}
                   >
                     <TextArea
                       placeholder="Tell us a bit about yourself"
-                      autoSize={{ minRows: 3, maxRows: 6 }}
+                      autoSize={{ minRows: 2, maxRows: 4 }}
                       disabled={!editing}
                       maxLength={200}
                       showCount
+                      style={{ fontSize: '14px' }}
                     />
                   </Form.Item>
 
                   {editing && (
-                    <Form.Item>
+                    <Form.Item style={{ marginBottom: '0' }}>
                       <Button
                         type="primary"
                         htmlType="submit"
                         className="gradient-button"
+                        size="middle"
                         style={{
-                          width: '100%',
+                          width: '50%',
                           background: '#00BF96',
                           border: 'none',
-                          boxShadow: '0 4px 12px rgba(0, 191, 150, 0.2)'
+                          boxShadow: '0 2px 6px rgba(0, 191, 150, 0.2)',
+                          fontSize: '14px'
                         }}
                       >
                         Save Changes
@@ -365,7 +391,7 @@ const Profile = () => {
           </Col>
         </Row>
       </div>
-    </DashboardLayout>
+    </Sidebar>
   );
 };
 

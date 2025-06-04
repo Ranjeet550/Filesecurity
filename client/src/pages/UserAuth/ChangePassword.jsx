@@ -16,9 +16,9 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { AUTH_API_URL } from '../config';
-import DashboardLayout from '../components/DashboardLayout';
-import AuthContext from '../context/AuthContext';
+import { AUTH_API_URL } from '../../config';
+import Sidebar from '../../components/Sidebar';
+import AuthContext from '../../context/AuthContext';
 
 const { Title, Text } = Typography;
 
@@ -72,26 +72,36 @@ const ChangePassword = () => {
 
   if (success) {
     return (
-      <DashboardLayout>
-        <div className="fade-in">
-          <Card className="dashboard-card">
+      <Sidebar >
+        <div className="fade-in" style={{ maxWidth: '500px', margin: '0 auto' }}>
+          <Card
+            className="dashboard-card"
+            style={{
+              padding: '16px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}
+          >
             <Result
               status="success"
-              icon={<CheckCircleOutlined style={{ color: '#00BF96' }} />}
-              title="Password Changed Successfully!"
-              subTitle="Your password has been changed. For security reasons, please log in again with your new password."
+              icon={<CheckCircleOutlined style={{ color: '#00BF96', fontSize: '48px' }} />}
+              title={<span style={{ fontSize: '18px' }}>Password Changed Successfully!</span>}
+              subTitle={<span style={{ fontSize: '14px' }}>Your password has been changed. For security reasons, please log in again with your new password.</span>}
               extra={[
-                <Button 
-                  type="primary" 
-                  key="logout" 
+                <Button
+                  type="primary"
+                  key="logout"
                   onClick={handleLogout}
                   className="gradient-button"
+                  size="middle"
+                  style={{ fontSize: '14px' }}
                 >
                   Log Out
                 </Button>,
-                <Button 
-                  key="dashboard" 
+                <Button
+                  key="dashboard"
                   onClick={handleBackToDashboard}
+                  size="middle"
+                  style={{ fontSize: '14px' }}
                 >
                   Back to Dashboard
                 </Button>
@@ -99,19 +109,25 @@ const ChangePassword = () => {
             />
           </Card>
         </div>
-      </DashboardLayout>
+      </Sidebar >
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="fade-in">
-        <div style={{ marginBottom: '24px' }}>
-          <Title level={3} style={{ margin: '0 0 8px 0' }}>Change Password</Title>
-          <Text type="secondary">Update your account password</Text>
+    <Sidebar >
+      <div className="fade-in" style={{ maxWidth: '500px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <Title level={4} style={{ margin: '0 0 6px 0', fontSize: '18px' }}>Change Password</Title>
+          <Text type="secondary" style={{ fontSize: '14px' }}>Update your account password</Text>
         </div>
-        
-        <Card className="dashboard-card">
+
+        <Card
+          className="dashboard-card"
+          style={{
+            padding: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+        >
           {error && (
             <Alert
               message="Error"
@@ -120,48 +136,52 @@ const ChangePassword = () => {
               showIcon
               closable
               onClose={() => setError(null)}
-              style={{ marginBottom: 24 }}
+              style={{ marginBottom: 16, fontSize: '14px' }}
             />
           )}
-          
+
           <Form
             form={form}
             name="changePassword"
             onFinish={handleSubmit}
             layout="vertical"
-            size="large"
+            size="middle"
           >
             <Form.Item
               name="currentPassword"
-              label="Current Password"
+              label={<span style={{ fontSize: '14px' }}>Current Password</span>}
               rules={[
                 { required: true, message: 'Please input your current password!' }
               ]}
+              style={{ marginBottom: '16px' }}
             >
-              <Input.Password 
-                prefix={<LockOutlined style={{ color: '#00BF96' }} />} 
-                placeholder="Enter current password" 
+              <Input.Password
+                prefix={<LockOutlined style={{ color: '#00BF96', fontSize: '14px' }} />}
+                placeholder="Enter current password"
+                style={{ fontSize: '14px' }}
               />
             </Form.Item>
-            
+
             <Form.Item
               name="newPassword"
-              label="New Password"
+              label={<span style={{ fontSize: '14px' }}>New Password</span>}
               rules={[
                 { required: true, message: 'Please input your new password!' },
                 { min: 6, message: 'Password must be at least 6 characters!' }
               ]}
               hasFeedback
+              style={{ marginBottom: '16px' }}
             >
-              <Input.Password 
-                prefix={<LockOutlined style={{ color: '#00BF96' }} />} 
-                placeholder="Enter new password" 
+              <Input.Password
+                prefix={<LockOutlined style={{ color: '#00BF96', fontSize: '14px' }} />}
+                placeholder="Enter new password"
+                style={{ fontSize: '14px' }}
               />
             </Form.Item>
-            
+
             <Form.Item
               name="confirmPassword"
-              label="Confirm New Password"
+              label={<span style={{ fontSize: '14px' }}>Confirm New Password</span>}
               dependencies={['newPassword']}
               hasFeedback
               rules={[
@@ -175,26 +195,32 @@ const ChangePassword = () => {
                   },
                 }),
               ]}
+              style={{ marginBottom: '20px' }}
             >
-              <Input.Password 
-                prefix={<LockOutlined style={{ color: '#00BF96' }} />} 
-                placeholder="Confirm new password" 
+              <Input.Password
+                prefix={<LockOutlined style={{ color: '#00BF96', fontSize: '14px' }} />}
+                placeholder="Confirm new password"
+                style={{ fontSize: '14px' }}
               />
             </Form.Item>
-            
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <Button 
-                type="primary" 
-                htmlType="submit" 
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <Button
+                type="primary"
+                htmlType="submit"
                 loading={loading}
                 className="gradient-button"
+                size="middle"
+                style={{ fontSize: '14px' }}
               >
                 Change Password
               </Button>
-              
-              <Button 
+
+              <Button
                 onClick={handleBackToDashboard}
-                icon={<ArrowLeftOutlined />}
+                icon={<ArrowLeftOutlined style={{ fontSize: '14px' }} />}
+                size="middle"
+                style={{ fontSize: '14px' }}
               >
                 Cancel
               </Button>
@@ -202,7 +228,7 @@ const ChangePassword = () => {
           </Form>
         </Card>
       </div>
-    </DashboardLayout>
+    </Sidebar >
   );
 };
 

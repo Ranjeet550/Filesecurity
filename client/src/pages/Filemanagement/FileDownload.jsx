@@ -26,7 +26,7 @@ import {
   LoginOutlined
 } from '@ant-design/icons';
 import { useParams, Link } from 'react-router-dom';
-import { getFileById, downloadFile } from '../api/fileService';
+import { getFileById, downloadFile } from '../../api/fileService';
 
 const { Title, Text } = Typography;
 
@@ -74,7 +74,7 @@ const FileDownload = () => {
         setFile(response.data);
       } catch (error) {
         console.error('Error fetching file:', error);
-        setError('File not found or has expired');
+        setError('File not found');
       } finally {
         setLoading(false);
       }
@@ -149,7 +149,7 @@ const FileDownload = () => {
           <Result
             status="error"
             title="File Not Found"
-            subTitle="The file you are looking for does not exist or has expired."
+            subTitle="The file you are looking for does not exist."
             icon={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
             extra={
               <Space direction="vertical" style={{ width: '100%' }}>
@@ -165,7 +165,7 @@ const FileDownload = () => {
                 </Link>
                 <div style={{ textAlign: 'center', marginTop: '16px' }}>
                   <Text type="secondary">
-                    The file may have been deleted or the link has expired.
+                    The file may have been deleted or the link is invalid.
                   </Text>
                 </div>
               </Space>

@@ -130,14 +130,19 @@ export const AuthProvider = ({ children }) => {
       setError(null);
 
       const res = await updateProfile(profileData);
+      console.log('Profile update response:', res);
 
       // Update user state and localStorage
-      setUser(res.data.data);
-      localStorage.setItem('user', JSON.stringify(res.data.data));
+      if (res && res.data && res.data.data) {
+        setUser(res.data.data);
+        localStorage.setItem('user', JSON.stringify(res.data.data));
+        console.log('User state updated:', res.data.data);
+      }
 
       setLoading(false);
       return res.data;
     } catch (err) {
+      console.error('Profile update error:', err);
       setError(err.message || 'Failed to update profile');
       setLoading(false);
       throw err;
@@ -151,13 +156,13 @@ export const AuthProvider = ({ children }) => {
       setError(null);
 
       const res = await uploadProfilePicture(file);
+      console.log('Profile picture upload response:', res);
 
-      // Update user state with new profile picture
-      if (res && res.data && res.data.data && res.data.data.profilePicture) {
-        setUser(prevUser => ({
-          ...prevUser,
-          profilePicture: res.data.data.profilePicture
-        }));
+      // Update user state with complete user data from response
+      if (res && res.data && res.data.data) {
+        setUser(res.data.data);
+        localStorage.setItem('user', JSON.stringify(res.data.data));
+        console.log('User state updated with new profile picture:', res.data.data);
       } else {
         console.error('Invalid response structure:', res);
       }
@@ -165,6 +170,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return res.data;
     } catch (err) {
+      console.error('Profile picture upload error:', err);
       setError(err.message || 'Failed to upload profile picture');
       setLoading(false);
       throw err;

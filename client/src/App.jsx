@@ -6,19 +6,20 @@ import { ConfigProvider, App as AntApp } from 'antd';
 import themeConfig from './theme/themeConfig';
 
 // Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import FileUpload from './pages/FileUpload';
-import FileDownload from './pages/FileDownload';
-import UserManagement from './pages/UserManagement';
-import NotFound from './pages/NotFound';
-import ForgotPassword from './pages/ForgotPassword';
-import OTPVerification from './pages/OTPVerification';
-import ResetPassword from './pages/ResetPassword';
-import ChangePassword from './pages/ChangePassword';
-import Profile from './pages/Profile';
-import Settings from './pages/Settings';
+import Login from './pages/UserAuth/Login';
+import Dashboard from './pages/Filemanagement/Dashboard';
+import FileUpload from './pages/Filemanagement/FileUpload';
+import FileDownload from './pages/Filemanagement/FileDownload';
+import UserManagement from './pages/Usermanagement/Alluser';
+import RoleManagement from './pages/Usermanagement/RoleManagement';
+import PermissionManagement from './pages/Usermanagement/PermissionManagement';
+import NotFound from './components/NotFound';
+import ForgotPassword from './pages/UserAuth/ForgotPassword';
+import OTPVerification from './pages/UserAuth/OTPVerification';
+import ResetPassword from './pages/UserAuth/ResetPassword';
+import ChangePassword from './pages/UserAuth/ChangePassword';
+import Profile from './pages/UserAuth/Profile';
+import Settings from './components/Settings';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -31,7 +32,6 @@ function App() {
           <Router>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/verify-otp" element={<OTPVerification />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -66,6 +66,16 @@ function App() {
                   <UserManagement />
                 </AdminRoute>
               } />
+              <Route path="/roles" element={
+                <AdminRoute>
+                  <RoleManagement />
+                </AdminRoute>
+              } />
+              <Route path="/permissions" element={
+                <AdminRoute>
+                  <PermissionManagement />
+                </AdminRoute>
+              } />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
@@ -92,7 +102,7 @@ const AdminRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  if (!token || user.role !== 'admin') {
+  if (!token || (user.role?.name !== 'admin' && user.role !== 'admin')) {
     return <Navigate to="/dashboard" replace />;
   }
 

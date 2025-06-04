@@ -18,7 +18,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { AUTH_API_URL } from '../config';
+import { AUTH_API_URL } from '../../config';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
