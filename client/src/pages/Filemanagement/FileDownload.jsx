@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Typography,
   Card,
@@ -10,7 +10,8 @@ import {
   Spin,
   Result,
   Divider,
-  Progress
+  Progress,
+  Grid
 } from 'antd';
 import {
   LockOutlined,
@@ -29,6 +30,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getFileById, downloadFile } from '../../api/fileService';
 
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 // Helper function to get file icon based on mimetype
 const getFileIcon = (mimetype) => {
@@ -65,6 +67,7 @@ const FileDownload = () => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const screens = useBreakpoint();
 
   useEffect(() => {
     const fetchFile = async () => {
@@ -131,11 +134,32 @@ const FileDownload = () => {
 
   if (loading) {
     return (
-      <div className="auth-container fade-in">
-        <Card className="login-form" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%)',
+        animation: 'fadeIn 0.5s ease-in-out'
+      }}>
+        <Card style={{
+          width: '100%',
+          maxWidth: screens.xs ? '90%' : screens.sm ? '380px' : '360px',
+          padding: screens.xs ? '16px' : '20px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+          border: 'none',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '200px'
+        }}>
           <div style={{ textAlign: 'center' }}>
             <Spin size="large" />
-            <div style={{ marginTop: '16px' }}>Loading file information...</div>
+            <div style={{ marginTop: '16px', color: '#666' }}>Loading file information...</div>
           </div>
         </Card>
       </div>
@@ -144,8 +168,25 @@ const FileDownload = () => {
 
   if (!file && !loading) {
     return (
-      <div className="auth-container fade-in">
-        <Card className="login-form" style={{ width: '500px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%)',
+        animation: 'fadeIn 0.5s ease-in-out'
+      }}>
+        <Card style={{
+          width: '100%',
+          maxWidth: screens.xs ? '90%' : screens.sm ? '400px' : '380px',
+          padding: screens.xs ? '16px' : '20px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+          border: 'none',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(10px)'
+        }}>
           <Result
             status="error"
             title="File Not Found"
@@ -158,13 +199,14 @@ const FileDownload = () => {
                     type="primary"
                     icon={<LoginOutlined />}
                     className="gradient-button"
-                    size="large"
+                    size="small"
+                    style={{ height: '36px', fontSize: '14px' }}
                   >
                     Go to Login
                   </Button>
                 </Link>
-                <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                  <Text type="secondary">
+                <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                  <Text type="secondary" style={{ fontSize: '13px' }}>
                     The file may have been deleted or the link is invalid.
                   </Text>
                 </div>
@@ -178,37 +220,35 @@ const FileDownload = () => {
 
   if (success) {
     return (
-      <div className="auth-container fade-in">
-        <Card className="login-form" style={{ width: '500px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%)',
+        animation: 'fadeIn 0.5s ease-in-out'
+      }}>
+        <Card style={{
+          width: '100%',
+          maxWidth: screens.xs ? '90%' : screens.sm ? '420px' : '400px',
+          padding: screens.xs ? '16px' : '20px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+          border: 'none',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(10px)'
+        }}>
           <Result
             status="success"
             title="File Downloaded Successfully!"
-            subTitle="Your file has been downloaded securely."
+           
             icon={<CheckCircleOutlined style={{ color: '#00BF96' }} />}
             extra={
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Space>
-                  <Link to="/login">
-                    <Button
-                      type="primary"
-                      icon={<LoginOutlined />}
-                      className="gradient-button"
-                    >
-                      Go to Login
-                    </Button>
-                  </Link>
-                  <Button
-                    onClick={() => {
-                      setSuccess(false);
-                      setDownloadProgress(0);
-                    }}
-                    icon={<DownloadOutlined />}
-                  >
-                    Download Again
-                  </Button>
-                </Space>
-                <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                  <Text type="secondary">
+                
+                <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                  <Text type="secondary" style={{ fontSize: '13px' }}>
                     Check your downloads folder for the file. Remember that you'll need the same password to open the downloaded file.
                   </Text>
                 </div>
@@ -221,67 +261,101 @@ const FileDownload = () => {
   }
 
   return (
-    <div className="auth-container fade-in">
-      <Card className="login-form" style={{ width: '500px' }}>
-        <div className="auth-logo">
-          <SecurityScanOutlined style={{ fontSize: '36px', marginBottom: '16px' }} />
-          <div>Secure File Transfer</div>
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      padding: '20px',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%)',
+      animation: 'fadeIn 0.5s ease-in-out'
+    }}>
+      <Card style={{
+        width: '100%',
+        maxWidth: screens.xs ? '90%' : screens.sm ? '420px' : '400px',
+        padding: screens.xs ? '16px' : '20px',
+        borderRadius: '16px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+        border: 'none',
+        background: 'rgba(255, 255, 255, 0.98)',
+        backdropFilter: 'blur(10px)',
+        transform: 'translateY(0)',
+        transition: 'all 0.3s ease'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '16px'
+        }}>
+          <SecurityScanOutlined style={{
+            fontSize: '28px',
+            color: '#00BF96',
+            marginRight: '8px',
+            filter: 'drop-shadow(0 4px 6px rgba(0, 191, 150, 0.3))'
+          }} />
+          <div style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            background: 'linear-gradient(135deg, #00BF96 0%, #00A080 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            Secure File Transfer
+          </div>
         </div>
 
-        <Title level={4} style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <Title level={5} style={{ textAlign: 'center', marginBottom: '20px', fontSize: '16px' }}>
           Secure File Download
         </Title>
 
         <Card
           style={{
-            marginBottom: 24,
+            marginBottom: 20,
             borderRadius: '12px',
-            background: '#f9f9f9'
+            background: '#f9f9f9',
+            border: '1px solid #e8e8e8'
           }}
         >
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <div style={{
-                width: '64px',
-                height: '64px',
+                width: '48px',
+                height: '48px',
                 background: '#f0f7ff',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: '16px'
+                marginRight: '12px'
               }}>
-                {getFileIcon(file.mimetype)}
+                {React.cloneElement(getFileIcon(file.mimetype), { style: { fontSize: 24 } })}
               </div>
-              <div>
-                <Text strong style={{ fontSize: 18, display: 'block' }}>{file.filename}</Text>
-                <Text type="secondary" style={{ fontSize: 14 }}>
+              <div style={{ flex: 1 }}>
+                <Text strong style={{ fontSize: 15, display: 'block', lineHeight: '1.3' }}>{file.filename}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
                   Size: {formatBytes(file.size)}
                 </Text>
-                <div>
-                  <Text type="secondary" style={{ fontSize: 14 }}>
-                    Uploaded by: {file.uploadedBy?.name || 'Anonymous'}
-                  </Text>
-                </div>
+                
               </div>
             </div>
 
-            <Divider style={{ margin: '16px 0' }} />
+            <Divider style={{ margin: '12px 0' }} />
 
             <div style={{
               display: 'flex',
               alignItems: 'center',
               background: '#fff7e6',
-              padding: '12px 16px',
+              padding: '10px 12px',
               borderRadius: '8px',
               border: '1px solid #ffe7ba'
             }}>
-              <FileProtectOutlined style={{ color: '#fa8c16', fontSize: '18px', marginRight: '12px' }} />
+              <FileProtectOutlined style={{ color: '#fa8c16', fontSize: '16px', marginRight: '10px' }} />
               <div>
-                <Text strong style={{ color: '#d46b08' }}>Password Protected File</Text>
+                <Text strong style={{ color: '#d46b08', fontSize: '13px' }}>Password Protected File</Text>
                 <div>
-                  <Text type="warning">
-                    You need the correct password to download this file. The downloaded file will open in your browser for secure viewing only.
+                  <Text type="warning" style={{ fontSize: '12px' }}>
+                    You need the correct password to download this file. The downloaded file will remain password-protected.
                   </Text>
                 </div>
               </div>
@@ -297,7 +371,7 @@ const FileDownload = () => {
             showIcon
             closable
             onClose={() => setError(null)}
-            style={{ marginBottom: 24 }}
+            style={{ marginBottom: 16, fontSize: '13px' }}
           />
         )}
 
@@ -320,23 +394,24 @@ const FileDownload = () => {
             return false;
           }}
           layout="vertical"
-          size="large"
+          size="middle"
         >
           <Form.Item
             name="password"
-            label="File Password"
+            label={<span style={{ fontSize: '14px', fontWeight: '500' }}>File Password</span>}
             rules={[{ required: true, message: 'Please enter the file password!' }]}
-
+            style={{ marginBottom: '16px' }}
           >
             <Input.Password
               prefix={<LockOutlined style={{ color: '#00BF96' }} />}
               placeholder="Enter the password provided by the sender"
               autoComplete="off"
+              style={{ height: '38px',width: '80%' }}
             />
           </Form.Item>
 
           {downloading && (
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <Progress
                 percent={downloadProgress}
                 status={downloadProgress >= 100 ? "success" : "active"}
@@ -344,14 +419,15 @@ const FileDownload = () => {
                   '0%': '#00BF96',
                   '100%': '#00A080',
                 }}
+                size="small"
               />
-              <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: '8px' }}>
+              <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: '6px', fontSize: '12px' }}>
                 {downloadProgress < 100 ? 'Downloading file...' : 'Download complete!'}
               </Text>
             </div>
           )}
 
-          <Form.Item>
+          <Form.Item style={{ marginBottom: '16px' }}>
             <Button
               type="primary"
               onClick={(e) => {
@@ -368,24 +444,16 @@ const FileDownload = () => {
               block
               loading={downloading}
               className="gradient-button"
-              style={{ height: '45px', fontSize: '16px' }}
+              style={{ height: '38px', width: '70%', fontSize: '14px', borderRadius: '8px' }}
             >
               Download File
             </Button>
           </Form.Item>
         </Form>
 
-        <Divider>
-          <Text type="secondary">OR</Text>
-        </Divider>
+        
 
-        <div style={{ textAlign: 'center' }}>
-          <Link to="/login">
-            <Button type="link" icon={<LoginOutlined />} style={{ padding: '0', fontWeight: '500', color: '#00BF96' }}>
-              Login to your account
-            </Button>
-          </Link>
-        </div>
+        
       </Card>
     </div>
   );
