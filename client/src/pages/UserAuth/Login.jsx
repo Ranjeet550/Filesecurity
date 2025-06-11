@@ -204,19 +204,13 @@ const Login = () => {
               </Col>
             </Row>
 
-            <Divider style={{ margin: '8px 0' }}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>OR</Text>
-            </Divider>
+            
 
             
           </Form>
         </Spin>
 
-        <div style={{ marginTop: '12px', textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: '10px', opacity: 0.8 }}>
-            By logging in, you agree to our Terms of Service and Privacy Policy
-          </Text>
-        </div>
+       
       </Card>
     </div>
   );

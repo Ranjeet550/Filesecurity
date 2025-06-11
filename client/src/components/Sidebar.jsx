@@ -102,20 +102,24 @@ const Sidebar = ({ children }) => {
         className="app-sider"
         style={{
           background: 'linear-gradient(180deg, #1a2141 0%, #141937 100%)',
-          boxShadow: '2px 0 15px rgba(0, 0, 0, 0.2)',
+          boxShadow: '4px 0 20px rgba(0, 0, 0, 0.15)',
           transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)',
           position: 'fixed',
           height: '100vh',
-          zIndex: 1000,
+          top: 0,
           left: collapsed && !screens.md ? '-80px' : 0,
-          overflow: 'auto',
-          borderRight: '1px solid rgba(255, 255, 255, 0.05)'
+          zIndex: 1001,
+          overflow: 'hidden',
+          borderRight: '2px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          flexDirection: 'column'
         }}
         breakpoint="lg"
         width={250}
       >
         <div className="app-logo" style={{
           height: '64px',
+          minHeight: '64px',
           margin: '0',
           color: 'white',
           background: 'linear-gradient(90deg, #141937 0%, #1a2141 100%)',
@@ -127,7 +131,8 @@ const Sidebar = ({ children }) => {
           padding: '0 16px',
           transition: 'all 0.3s ease',
           overflow: 'hidden',
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          flexShrink: 0
         }}>
           <SecurityScanOutlined style={{
             fontSize: '24px',
@@ -137,15 +142,22 @@ const Sidebar = ({ children }) => {
           }} />
           {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>Secure File Transfer</span>}
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[getActiveMenuKey()]}
-          style={{
-            background: 'transparent',
-            borderRight: 0,
-            padding: '12px 8px'
-          }}
+        <div style={{
+          flex: 1,
+          overflow: 'auto',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
+        }}>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[getActiveMenuKey()]}
+            style={{
+              background: 'transparent',
+              borderRight: 0,
+              padding: '12px 8px',
+              height: '100%'
+            }}
           items={[
             {
               key: '/dashboard',
@@ -153,14 +165,21 @@ const Sidebar = ({ children }) => {
               label: <Link to="/dashboard" style={{ fontWeight: '500' }}>Dashboard</Link>,
             },
             {
-              key: '/all-files',
-              icon: <AppstoreOutlined style={{ fontSize: '16px' }} />,
-              label: <Link to="/dashboard?view=all-files" style={{ fontWeight: '500' }}>All Files</Link>,
-            },
-            {
-              key: '/upload',
-              icon: <UploadOutlined style={{ fontSize: '16px' }} />,
-              label: <Link to="/upload" style={{ fontWeight: '500' }}>Upload File</Link>,
+              key: 'file-management',
+              icon: <FileOutlined style={{ fontSize: '16px' }} />,
+              label: 'File Management',
+              children: [
+                {
+                  key: '/upload',
+                  icon: <UploadOutlined style={{ fontSize: '14px' }} />,
+                  label: <Link to="/upload" style={{ fontWeight: '500' }}>Upload File</Link>,
+                },
+                {
+                  key: '/all-files',
+                  icon: <AppstoreOutlined style={{ fontSize: '14px' }} />,
+                  label: <Link to="/dashboard?view=all-files" style={{ fontWeight: '500' }}>All Files</Link>,
+                }
+              ]
             },
 
             ...(user?.role?.name === 'admin' ? [
@@ -188,27 +207,29 @@ const Sidebar = ({ children }) => {
               },
             ] : []),
           ]}
-        />
+          />
+        </div>
       </Sider>
       <Layout style={{
           transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)',
-          marginLeft: screens.md ? (collapsed ? 80 : 250) : 0
+          marginLeft: screens.md ? (collapsed ? 80 : 250) : 0,
+          minHeight: '100vh'
         }}>
         <Header
           className="app-header"
           style={{
             padding: '0 24px',
             background: '#ffffff',
-            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             height: '64px',
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            backdropFilter: 'blur(8px)',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)'
+            minHeight: '64px',
+            position: 'relative',
+            zIndex: 100,
+            borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+            borderLeft: screens.md ? '1px solid rgba(0, 0, 0, 0.06)' : 'none'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -246,25 +267,7 @@ const Sidebar = ({ children }) => {
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Tooltip title="Notifications">
-              <Badge count={0} dot>
-                <Button
-                  type="text"
-                  icon={<BellOutlined />}
-                  style={{
-                    fontSize: '16px',
-                    width: 40,
-                    height: 40,
-                    marginRight: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '8px',
-                    background: 'rgba(0, 0, 0, 0.02)'
-                  }}
-                />
-              </Badge>
-            </Tooltip>
+            
 
             <Dropdown
               menu={{
@@ -327,12 +330,14 @@ const Sidebar = ({ children }) => {
         <Content className="app-content" style={{
           padding: screens.sm ? '20px' : '12px',
           transition: 'padding 0.3s ease',
-          background: 'rgba(245, 245, 245, 0.5)'
+          background: 'rgba(245, 245, 245, 0.5)',
+          minHeight: 'calc(100vh - 64px)',
+          overflow: 'auto'
         }}>
           <div
             style={{
               padding: screens.sm ? 24 : 16,
-              minHeight: 280,
+              minHeight: 'calc(100vh - 128px)',
               background: colorBgContainer,
               borderRadius: '12px',
               boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)',
