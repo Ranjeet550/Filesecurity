@@ -65,11 +65,7 @@ const Sidebar = ({ children }) => {
       label: 'Change Password',
       icon: <LockOutlined />,
     },
-    {
-      key: 'settings',
-      label: 'Settings',
-      icon: <SettingOutlined />,
-    },
+    
     {
       type: 'divider',
     },
@@ -88,9 +84,7 @@ const Sidebar = ({ children }) => {
       navigate('/change-password');
     } else if (e.key === 'profile') {
       navigate('/profile');
-    } else if (e.key === 'settings') {
-      navigate('/settings');
-    }
+    } 
   };
 
   return (
@@ -262,7 +256,7 @@ const Sidebar = ({ children }) => {
               {location.pathname === '/users' && 'User Management'}
               {location.pathname === '/change-password' && 'Change Password'}
               {location.pathname === '/profile' && 'My Profile'}
-              {location.pathname === '/settings' && 'Settings'}
+             
               {location.pathname === '/dashboard' && location.search.includes('view=all-files') && 'All Files'}
             </h2>
           </div>

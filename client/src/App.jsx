@@ -19,7 +19,7 @@ import OTPVerification from './pages/UserAuth/OTPVerification';
 import ResetPassword from './pages/UserAuth/ResetPassword';
 import ChangePassword from './pages/UserAuth/ChangePassword';
 import Profile from './pages/UserAuth/Profile';
-import Settings from './components/Settings';
+
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -55,11 +55,7 @@ function App() {
                   <Profile />
                 </PrivateRoute>
               } />
-              <Route path="/settings" element={
-                <PrivateRoute>
-                  <Settings />
-                </PrivateRoute>
-              } />
+             
               <Route path="/download/:fileId" element={<FileDownload />} />
               <Route path="/users" element={
                 <AdminRoute>
