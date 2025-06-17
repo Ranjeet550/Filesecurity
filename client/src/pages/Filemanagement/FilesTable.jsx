@@ -17,7 +17,8 @@ import {
   Progress,
   Tag,
   Row,
-  Col
+  Col,
+  theme
 } from 'antd';
 import {
   FileOutlined,
@@ -46,6 +47,7 @@ import AuthContext from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 
 const { Text } = Typography;
+const { useToken } = theme;
 
 // Helper function to get file icon based on mimetype
 const getFileIcon = (mimetype) => {
@@ -64,6 +66,33 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const { token } = useToken();
+
+  // Table styles
+  const tableStyles = {
+    table: {
+      borderRadius: '8px',
+      overflow: 'hidden',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    },
+    headerCell: {
+      background: token.colorBgContainer,
+      fontWeight: 600,
+      color: token.colorTextHeading,
+      padding: '16px',
+      borderBottom: `2px solid ${token.colorBorderSecondary}`,
+    },
+    bodyCell: {
+      padding: '16px',
+      borderBottom: `1px solid ${token.colorBorderSecondary}`,
+    },
+    hoverRow: {
+      background: token.colorBgTextHover,
+    },
+    lastRow: {
+      borderBottom: 'none',
+    },
+  };
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -217,10 +246,16 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       title: 'SN.',
       key: 'serialNumber',
       render: (_, __, index) => {
-        // Calculate the serial number based on current page and page size
         return (currentPage - 1) * pageSize + index + 1;
       },
-      width: '8%',
+      width: '80px',
+      fixed: 'left',
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
     },
     {
       title: 'File Name',
@@ -232,13 +267,27 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           <span style={{ fontWeight: '500' }}>{text}</span>
         </Space>
       ),
+      ellipsis: true,
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
     },
     {
       title: 'Size',
       dataIndex: 'size',
       key: 'size',
       render: (size) => formatBytes(size),
-      width: '12%',
+      width: '100px',
+      responsive: ['sm'],
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
     },
     {
       title: 'Uploaded',
@@ -250,7 +299,14 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           {new Date(date).toLocaleDateString()}
         </Space>
       ),
-      width: '15%',
+      width: '120px',
+      responsive: ['md'],
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
     },
     {
       title: 'Downloads',
@@ -265,7 +321,14 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           </Space>
         );
       },
-      width: '15%',
+      width: '100px',
+      responsive: ['md'],
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
     },
     // Conditionally add "Uploaded By" column for admin users
     ...(isAdmin ? [{
@@ -280,7 +343,14 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           </Tag>
         </Space>
       ),
-      width: '15%',
+      width: '150px',
+      responsive: ['lg'],
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
     }] : []),
     {
       title: 'Actions',
@@ -290,7 +360,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         const canDelete = hasPermission(user, 'file_management', 'delete');
 
         return (
-          <Space size="small">
+          <Space size="small" wrap>
             <Button
               type="primary"
               icon={<DownloadOutlined />}
@@ -299,7 +369,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
               onClick={() => handleDownloadClick(record)}
               loading={downloadLoading && selectedFile?.id === (record.id || record._id)}
             >
-              Download
+              <span className="action-text">Download</span>
             </Button>
             <Button
               type="default"
@@ -308,7 +378,6 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
               onClick={async () => {
                 try {
                   const fileId = record.id || record._id;
-                  // Create a link without the password for security
                   const link = `${window.location.origin}/download/${fileId}`;
                   navigator.clipboard.writeText(link);
                   message.success('Download link copied to clipboard');
@@ -318,7 +387,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 }
               }}
             >
-              Share
+              <span className="action-text">Share</span>
             </Button>
             {canDelete && (
               <Popconfirm
@@ -335,71 +404,87 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           </Space>
         );
       },
-      width: '25%',
+      width: '200px',
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
     },
   ];
+
+  // Responsive styles
+  const responsiveStyles = {
+    
+    header: {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: '16px',
+      padding: '16px 20px',
+      borderBottom: '1px solid #f0f0f0'
+    },
+    title: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    searchContainer: {
+      padding: '16px 20px',
+      borderBottom: '1px solid #f0f0f0'
+    },
+    actionButton: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '4px',
+      whiteSpace: 'nowrap'
+    },
+    uploadButton: {
+      background: 'linear-gradient(90deg, #00BF96 0%, #00A080 100%)',
+      border: 'none',
+      boxShadow: '0 2px 8px rgba(0, 191, 150, 0.2)',
+      borderRadius: '8px',
+      height: '36px',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 16px',
+      whiteSpace: 'nowrap'
+    }
+  };
 
   return (
     <>
       <Card
-        styles={{
-          header: {
-            borderBottom: '1px solid #f0f0f0',
-            padding: '20px 24px'
-          },
-          body: {
-            padding: '0'
-          }
-        }}
-        style={{
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-          border: '1px solid #f0f0f0',
-          overflow: 'hidden'
-        }}
-        title={
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+      
+      >
+        <div style={responsiveStyles.header}>
+          <div style={responsiveStyles.title}>
             {activeView === 'all-files' ? (
-              <AppstoreOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#00BF96' }} />
+              <AppstoreOutlined style={{ fontSize: '18px', color: '#00BF96' }} />
             ) : (
-              <FileOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#00BF96' }} />
+              <FileOutlined style={{ fontSize: '18px', color: '#00BF96' }} />
             )}
-            <span style={{ fontWeight: '600', color: '#1a2141' }}>
+            <Typography.Text strong style={{ color: '#1a2141' }}>
               {activeView === 'all-files' ? 'All Files' : 'Your Files'}
-            </span>
+            </Typography.Text>
           </div>
-        }
-        extra={
-          hasPermission(user, 'file_management', 'create') && (
+          
+          {hasPermission(user, 'file_management', 'create') && (
             <Link to="/upload">
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                style={{
-                  background: 'linear-gradient(90deg, #00BF96 0%, #00A080 100%)',
-                  border: 'none',
-                  boxShadow: '0 2px 8px rgba(0, 191, 150, 0.2)',
-                  borderRadius: '8px',
-                  height: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '0 16px'
-                }}
-              >
-                Upload New File
+              <Button style={responsiveStyles.uploadButton}>
+                <UploadOutlined />
+                <span style={{ marginLeft: '8px' }}>Upload New File</span>
               </Button>
             </Link>
-          )
-        }
-      >
-        {/* Search Input */}
-        <div style={{
-          padding: '16px 24px',
-          borderBottom: '1px solid #f0f0f0',
-          
-        }}>
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} md={8} lg={5}>
+          )}
+        </div>
+
+        <div style={responsiveStyles.searchContainer}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={24} md={12} lg={8} xl={6}>
               <Input
                 placeholder="Search files by name, type, or uploader..."
                 prefix={<SearchOutlined style={{ color: '#8c8c8c' }} />}
@@ -417,7 +502,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset to first page when searching
+                  setCurrentPage(1);
                 }}
                 allowClear
                 style={{
@@ -426,42 +511,43 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 }}
               />
             </Col>
-         
           </Row>
         </div>
 
         <Table
-          style={{
-            '& .ant-table-thead > tr > th': {
-              background: 'rgba(0, 0, 0, 0.02)',
-              fontWeight: '600',
-              color: '#1a2141'
-            },
-            '& .ant-table-tbody > tr:hover > td': {
-              background: 'rgba(0, 191, 150, 0.05)'
-            }
-          }}
           columns={columns}
           dataSource={filteredFiles}
-          rowKey="_id"
           loading={loading}
+          rowKey={(record) => record.id || record._id}
           pagination={{
             current: currentPage,
             pageSize: pageSize,
-            showTotal: (total) => searchTerm
-              ? `Showing ${total} of ${files.length} files`
-              : `Total ${total} files`,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50'],
             onChange: (page, size) => {
               setCurrentPage(page);
               setPageSize(size);
             },
-            onShowSizeChange: (_, size) => {
-              setCurrentPage(1); // Reset to first page when changing page size
-              setPageSize(size);
-            }
+            showSizeChanger: true,
+            showTotal: (total) => `Total ${total} items`,
+            responsive: true,
+            size: 'small'
           }}
+          scroll={{ x: 'max-content' }}
+          style={{
+            ...tableStyles.table,
+            overflowX: 'auto'
+          }}
+          onRow={(record, index) => ({
+            style: {
+              ...tableStyles.bodyCell,
+              ...(index === filteredFiles.length - 1 ? tableStyles.lastRow : {}),
+            },
+            onMouseEnter: (event) => {
+              event.currentTarget.style.background = tableStyles.hoverRow.background;
+            },
+            onMouseLeave: (event) => {
+              event.currentTarget.style.background = '';
+            },
+          })}
         />
       </Card>
 
@@ -478,6 +564,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         footer={null}
         width={450}
         style={{ top: 20 }}
+        bodyStyle={{ padding: '24px' }}
       >
         {downloadLoading ? (
           <div style={{ textAlign: 'center', padding: '24px' }}>
@@ -494,24 +581,28 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 icon={<CheckCircleOutlined style={{ color: '#00BF96' }} />}
                 extra={
                   <Space direction="vertical" style={{ width: '100%' }}>
-                    <Space>
-                      <Button
-                        type="primary"
-                        className="gradient-button"
-                        onClick={closeDownloadModal}
-                      >
-                        Close
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setDownloadSuccess(false);
-                          setDownloadProgress(0);
-                        }}
-                        icon={<DownloadOutlined />}
-                      >
-                        Download Again
-                      </Button>
-                    </Space>
+                    <Row gutter={[16, 16]} justify="center">
+                      <Col>
+                        <Button
+                          type="primary"
+                          className="gradient-button"
+                          onClick={closeDownloadModal}
+                        >
+                          Close
+                        </Button>
+                      </Col>
+                      <Col>
+                        <Button
+                          onClick={() => {
+                            setDownloadSuccess(false);
+                            setDownloadProgress(0);
+                          }}
+                          icon={<DownloadOutlined />}
+                        >
+                          Download Again
+                        </Button>
+                      </Col>
+                    </Row>
                     <div style={{ textAlign: 'center', marginTop: '16px' }}>
                       <Text type="secondary">
                         Check your downloads folder for the file. The file will open in your browser for viewing only.
@@ -532,52 +623,55 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                   }}
                   size="small"
                 >
-                  <Space direction="vertical" style={{ width: '100%' }} size="small">
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div style={{
-                        width: '48px',
-                        height: '48px',
-                        background: '#f0f7ff',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: '12px'
-                      }}>
-                        {getFileIcon(selectedFile.mimetype)}
-                      </div>
-                      <div>
-                        <Text strong style={{ fontSize: 14, display: 'block' }}>
-                          {selectedFile.filename || selectedFile.originalName}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          Size: {formatBytes(selectedFile.size)}
-                        </Text>
-                       
-                      </div>
-                    </div>
-
-                    <Divider style={{ margin: '12px 0' }} />
-
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      background: '#fff7e6',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #ffe7ba'
-                    }}>
-                      <FileProtectOutlined style={{ color: '#fa8c16', fontSize: '16px', marginRight: '8px' }} />
-                      <div>
-                        <Text strong style={{ color: '#d46b08', fontSize: '13px' }}>Password Protected File</Text>
-                        <div>
-                          <Text type="warning" style={{ fontSize: '12px' }}>
-                            Enter the password to download this file securely.
-                          </Text>
+                  <Row gutter={[16, 16]} align="middle">
+                    <Col xs={24} sm={24} md={24}>
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div style={{
+                            width: '48px',
+                            height: '48px',
+                            background: '#f0f7ff',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '12px'
+                          }}>
+                            {getFileIcon(selectedFile.mimetype)}
+                          </div>
+                          <div>
+                            <Text strong style={{ fontSize: 14, display: 'block' }}>
+                              {selectedFile.filename || selectedFile.originalName}
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              Size: {formatBytes(selectedFile.size)}
+                            </Text>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </Space>
+
+                        <Divider style={{ margin: '12px 0' }} />
+
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          background: '#fff7e6',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #ffe7ba'
+                        }}>
+                          <FileProtectOutlined style={{ color: '#fa8c16', fontSize: '16px', marginRight: '8px' }} />
+                          <div>
+                            <Text strong style={{ color: '#d46b08', fontSize: '13px' }}>Password Protected File</Text>
+                            <div>
+                              <Text type="warning" style={{ fontSize: '12px' }}>
+                                Enter the password to download this file securely.
+                              </Text>
+                            </div>
+                          </div>
+                        </div>
+                      </Space>
+                    </Col>
+                  </Row>
                 </Card>
 
                 {downloadError && (
@@ -610,7 +704,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                       prefix={<LockOutlined style={{ color: '#00BF96', fontSize: '15px' }} />}
                       placeholder="Enter password"
                       autoComplete="off"
-                      style={{ fontSize: '13px', width: '50%' }}
+                      style={{ fontSize: '13px' }}
                     />
                   </Form.Item>
 
@@ -632,21 +726,25 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                   )}
 
                   <Form.Item style={{ marginBottom: 0 }}>
-                    <Space style={{ width: '100%', justifyContent: 'flex-end' }} size="small">
-                      <Button onClick={closeDownloadModal} size="small">
-                        Cancel
-                      </Button>
-                      <Button
-                        type="primary"
-                        htmlType="submit"
-                        icon={<DownloadOutlined />}
-                        loading={downloading}
-                        className="gradient-button"
-                        size="small"
-                      >
-                        Download
-                      </Button>
-                    </Space>
+                    <Row gutter={[16, 16]} justify="end">
+                      <Col>
+                        <Button onClick={closeDownloadModal} size="small">
+                          Cancel
+                        </Button>
+                      </Col>
+                      <Col>
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          icon={<DownloadOutlined />}
+                          loading={downloading}
+                          className="gradient-button"
+                          size="small"
+                        >
+                          Download
+                        </Button>
+                      </Col>
+                    </Row>
                   </Form.Item>
                 </Form>
               </>
