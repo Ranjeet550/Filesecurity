@@ -122,7 +122,10 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
         }}>
           {location.pathname === '/dashboard' && !location.search.includes('view=all-files') && 'Dashboard'}
           {location.pathname === '/upload' && 'Upload File'}
-          {location.pathname === '/users' && 'User Management'}
+          {location.pathname === '/users' && 'Users'}
+          {location.pathname === '/roles' && 'Roles'}
+          {location.pathname === '/permissions' && 'Permission'}
+
           {location.pathname === '/change-password' && 'Change Password'}
           {location.pathname === '/profile' && 'My Profile'}
           {location.pathname === '/dashboard' && location.search.includes('view=all-files') && 'All Files'}
