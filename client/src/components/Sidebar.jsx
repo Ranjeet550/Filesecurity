@@ -14,38 +14,16 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import Header from './Header';
+import './Sidebar.css';
 
 const { Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
-// Table styles object
-const tableStyles = {
-  table: {
-    borderRadius: '8px',
-    overflow: 'hidden',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-  },
-  thead: {
-    background: '#fafafa',
-    fontWeight: 600,
-    color: '#1a2141',
-    padding: '16px',
-    borderBottom: '2px solid #f0f0f0',
-  },
-  tbody: {
-    padding: '16px',
-    borderBottom: '1px solid #f0f0f0',
-  },
-  hoverRow: {
-    background: '#f5f5f5',
-  },
-  lastRow: {
-    borderBottom: 'none',
-  },
-};
+
 
 const Sidebar = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [openKeys, setOpenKeys] = useState([]);
   const { user } = useContext(AuthContext);
   const location = useLocation();
   const screens = useBreakpoint();
@@ -60,6 +38,26 @@ const Sidebar = ({ children }) => {
     return activeKey;
   };
 
+  // Determine which parent menus should be open based on current route
+  const getDefaultOpenKeys = () => {
+    const pathname = location.pathname;
+    const search = location.search;
+    
+    const openKeys = [];
+    
+    // File Management submenu
+    if (pathname === '/upload' || (pathname === '/dashboard' && search.includes('view=all-files'))) {
+      openKeys.push('file-management');
+    }
+    
+    // User Management submenu (admin only)
+    if (pathname === '/users' || pathname === '/roles' || pathname === '/permissions') {
+      openKeys.push('user-management');
+    }
+    
+    return openKeys;
+  };
+
   const {
     token: { colorBgContainer },
   } = theme.useToken();
@@ -69,46 +67,73 @@ const Sidebar = ({ children }) => {
     setCollapsed(!screens.md);
   }, [screens.md]);
 
+  // Set initial open keys based on current route
+  useEffect(() => {
+    const defaultOpenKeys = getDefaultOpenKeys();
+    setOpenKeys(defaultOpenKeys);
+  }, [location.pathname, location.search]);
+
+  // Handle menu open/close
+  const handleOpenChange = (keys) => {
+    // If sidebar is collapsed, don't allow opening submenus
+    if (collapsed) {
+      setOpenKeys([]);
+      return;
+    }
+    
+    // Find the latest opened key
+    const latestOpenKey = keys.find(key => openKeys.indexOf(key) === -1);
+    
+    // If no new key is opened, just close the menu
+    if (!latestOpenKey) {
+      setOpenKeys(keys);
+      return;
+    }
+    
+    // Define root submenu keys
+    const rootSubmenuKeys = ['file-management', 'user-management'];
+    
+    // If the latest opened key is a root submenu
+    if (rootSubmenuKeys.includes(latestOpenKey)) {
+      // Close other submenus and open the new one
+      setOpenKeys([latestOpenKey]);
+    } else {
+      // For non-root keys, just update the open keys
+      setOpenKeys(keys);
+    }
+  };
+
+  // Reset open keys when sidebar collapses
+  useEffect(() => {
+    if (collapsed) {
+      setOpenKeys([]);
+    } else {
+      // Restore open keys when sidebar expands
+      const defaultOpenKeys = getDefaultOpenKeys();
+      setOpenKeys(defaultOpenKeys);
+    }
+  }, [collapsed]);
+
   return (
     <Layout className="app-layout">
       <Sider
         trigger={null}
         collapsible
         collapsed={collapsed}
-        className="app-sider"
+        className={`app-sidebar ${collapsed ? 'collapsed' : ''}`}
         style={{
-          background: 'linear-gradient(180deg, #1a2141 0%, #141937 100%)',
-          boxShadow: '4px 0 20px rgba(0, 0, 0, 0.15)',
-          transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)',
           position: 'fixed',
           height: '100vh',
           top: 0,
           left: collapsed && !screens.md ? '-80px' : 0,
           zIndex: 1001,
-          overflow: 'hidden',
-          borderRight: '2px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          flexDirection: 'column'
+          overflow: 'hidden'
         }}
         breakpoint="lg"
         width={250}
       >
         <div className="app-logo" style={{
-          height: '64px',
-          minHeight: '64px',
-          margin: '0',
-          color: 'white',
-          background: 'linear-gradient(90deg, #141937 0%, #1a2141 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: collapsed ? '20px' : '18px',
-          fontWeight: 'bold',
-          padding: '0 16px',
-          transition: 'all 0.3s ease',
-          overflow: 'hidden',
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-          flexShrink: 0
+          fontSize: collapsed ? '20px' : '18px'
         }}>
           <SecurityScanOutlined style={{
             fontSize: '24px',
@@ -118,71 +143,87 @@ const Sidebar = ({ children }) => {
           }} />
           {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>Secure File Transfer</span>}
         </div>
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
-        }}>
+        <div className="sidebar-menu-container">
           <Menu
             theme="dark"
             mode="inline"
             selectedKeys={[getActiveMenuKey()]}
-            style={{
-              background: 'transparent',
-              borderRight: 0,
-              padding: '12px 8px',
-              height: '100%'
-            }}
-          items={[
-            {
-              key: '/dashboard',
-              icon: <DashboardOutlined style={{ fontSize: '16px' }} />,
-              label: <Link to="/dashboard" style={{ fontWeight: '500' }}>Dashboard</Link>,
-            },
-            {
-              key: 'file-management',
-              icon: <FileOutlined style={{ fontSize: '16px' }} />,
-              label: 'File Management',
-              children: [
-                {
-                  key: '/upload',
-                  icon: <UploadOutlined style={{ fontSize: '14px' }} />,
-                  label: <Link to="/upload" style={{ fontWeight: '500' }}>Upload File</Link>,
-                },
-                {
-                  key: '/all-files',
-                  icon: <AppstoreOutlined style={{ fontSize: '14px' }} />,
-                  label: <Link to="/dashboard?view=all-files" style={{ fontWeight: '500' }}>All Files</Link>,
-                }
-              ]
-            },
+            openKeys={openKeys}
+            onOpenChange={handleOpenChange}
 
-            ...(user?.role?.name === 'admin' ? [
+            items={[
               {
-                key: 'user-management',
-                icon: <TeamOutlined style={{ fontSize: '16px' }} />,
-                label: 'User Management',
+                key: '/dashboard',
+                icon: <DashboardOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
+                label: (
+                  <Link to="/dashboard" className="sidebar-menu-link">
+                    Dashboard
+                  </Link>
+                )
+              },
+              {
+                key: 'file-management',
+                icon: <FileOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
+                label: <span className="sidebar-menu-link">File Management</span>,
                 children: [
                   {
-                    key: '/users',
-                    icon: <UserOutlined style={{ fontSize: '14px' }} />,
-                    label: <Link to="/users" style={{ fontWeight: '500' }}>Users</Link>,
+                    key: '/upload',
+                    icon: <UploadOutlined style={{ fontSize: '14px', color: '#52c41a' }} />,
+                    label: (
+                      <Link to="/upload" className="sidebar-submenu-link">
+                        Upload File
+                      </Link>
+                    )
                   },
                   {
-                    key: '/roles',
-                    icon: <SafetyOutlined style={{ fontSize: '14px' }} />,
-                    label: <Link to="/roles" style={{ fontWeight: '500' }}>Roles</Link>,
-                  },
-                  {
-                    key: '/permissions',
-                    icon: <KeyOutlined style={{ fontSize: '14px' }} />,
-                    label: <Link to="/permissions" style={{ fontWeight: '500' }}>Permissions</Link>,
+                    key: '/all-files',
+                    icon: <AppstoreOutlined style={{ fontSize: '14px', color: '#1890ff' }} />,
+                    label: (
+                      <Link to="/dashboard?view=all-files" className="sidebar-submenu-link">
+                        All Files
+                      </Link>
+                    )
                   }
                 ]
               },
-            ] : []),
-          ]}
+
+              ...(user?.role?.name === 'admin' ? [
+                {
+                  key: 'user-management',
+                  icon: <TeamOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
+                  label: <span className="sidebar-menu-link">User Management</span>,
+                  children: [
+                    {
+                      key: '/users',
+                      icon: <UserOutlined style={{ fontSize: '14px', color: '#722ed1' }} />,
+                      label: (
+                        <Link to="/users" className="sidebar-submenu-link">
+                          Users
+                        </Link>
+                      )
+                    },
+                    {
+                      key: '/roles',
+                      icon: <SafetyOutlined style={{ fontSize: '14px', color: '#fa8c16' }} />,
+                      label: (
+                        <Link to="/roles" className="sidebar-submenu-link">
+                          Roles
+                        </Link>
+                      )
+                    },
+                    {
+                      key: '/permissions',
+                      icon: <KeyOutlined style={{ fontSize: '14px', color: '#eb2f96' }} />,
+                      label: (
+                        <Link to="/permissions" className="sidebar-submenu-link">
+                          Permissions
+                        </Link>
+                      )
+                    }
+                  ]
+                },
+              ] : []),
+            ]}
           />
         </div>
       </Sider>
@@ -195,20 +236,12 @@ const Sidebar = ({ children }) => {
         <Content className="app-content" style={{
           padding: screens.sm ? '20px' : '12px',
           transition: 'padding 0.3s ease',
-          background: 'rgba(245, 245, 245, 0.5)',
+        
           minHeight: 'calc(100vh - 64px)',
           overflow: 'auto'
         }}>
           <div
-            style={{
-              padding: screens.sm ? 24 : 16,
-              minHeight: 'calc(100vh - 128px)',
-              background: colorBgContainer,
-              borderRadius: '12px',
-              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)',
-              border: '1px solid rgba(0, 0, 0, 0.02)',
-              ...tableStyles.table
-            }}
+            
           >
             {children}
           </div>

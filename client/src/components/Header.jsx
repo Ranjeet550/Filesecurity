@@ -64,18 +64,18 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
       className="app-header"
       style={{
         padding: '0 24px',
-        background: '#ffffff',
-        boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+        background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        height: '60px',
-       
+        height: '64px',
         minHeight: '64px',
         position: 'relative',
         zIndex: 100,
-        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-        borderLeft: screens.md ? '1px solid rgba(0, 0, 0, 0.06)' : 'none'
+        borderLeft: 'none',
+        transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)',
+        width: '100%'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -84,23 +84,41 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
           icon={<MenuOutlined />}
           onClick={() => {
             if (window.innerWidth < 768) {
-              onMobileMenuClick();
+              onMobileMenuClick && onMobileMenuClick();
             } else {
               setCollapsed(!collapsed);
             }
           }}
           style={{
-            fontSize: '16px',
-            width: 64,
-            height: 64,
+            fontSize: '18px',
+            width: 48,
+            height: 48,
+            color: 'rgba(255, 255, 255, 0.9)',
+            transition: 'all 0.3s ease',
+            borderRadius: '10px',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.color = '#3498db';
+            e.target.style.background = 'rgba(52, 152, 219, 0.15)';
+            e.target.style.transform = 'scale(1.05)';
+            e.target.style.borderColor = 'rgba(52, 152, 219, 0.3)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.color = 'rgba(255, 255, 255, 0.9)';
+            e.target.style.background = 'transparent';
+            e.target.style.transform = 'scale(1)';
+            e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
           }}
         />
         <h2 style={{
-          margin: '0 0 0 16px',
-          fontSize: '18px',
-          fontWeight: '600',
+          margin: '0 0 0 20px',
+          fontSize: '20px',
+          fontWeight: '700',
           display: screens.xs ? 'none' : 'block',
-          color: '#1a2141'
+          color: '#ffffff',
+          textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+          letterSpacing: '0.5px'
         }}>
           {location.pathname === '/dashboard' && !location.search.includes('view=all-files') && 'Dashboard'}
           {location.pathname === '/upload' && 'Upload File'}
@@ -122,26 +140,40 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            padding: '6px 12px',
-            borderRadius: '10px',
+            padding: '10px 18px',
+            borderRadius: '15px',
             transition: 'all 0.3s ease',
-            background: 'rgba(0, 0, 0, 0.02)',
-            border: '1px solid rgba(0, 0, 0, 0.04)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-            '&:hover': {
-              background: 'rgba(0, 0, 0, 0.04)',
-            }
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(15px)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(52, 152, 219, 0.1) 100%)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.borderColor = 'rgba(52, 152, 219, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
           }}>
             <Avatar
               style={{
-                backgroundColor: user?.profilePicture ? 'transparent' : colorPrimary,
-                marginRight: '12px',
-                boxShadow: '0 2px 8px rgba(0, 191, 150, 0.2)',
+                backgroundColor: user?.profilePicture ? 'transparent' : '#3498db',
+                marginRight: '14px',
+                boxShadow: '0 4px 15px rgba(52, 152, 219, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                color: '#ffffff',
+                fontWeight: '700',
+                fontSize: '16px'
               }}
-              size={screens.xs ? 'default' : 36}
+              size={screens.xs ? 'default' : 40}
               src={user?.profilePicture ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.profilePicture}` : null}
               onError={() => {
                 console.log('Avatar image failed to load in header');
@@ -151,17 +183,20 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
             </Avatar>
             <div style={{
               display: screens.xs ? 'none' : 'block',
-              marginRight: '4px'
+              marginRight: '8px'
             }}>
               <div style={{
-                fontWeight: '600',
-                fontSize: '14px',
-                lineHeight: '1.2'
+                fontWeight: '700',
+                fontSize: '15px',
+                lineHeight: '1.3',
+                color: '#ffffff',
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
               }}>{user?.name}</div>
               <div style={{
-                fontSize: '12px',
-                color: '#8c8c8c',
-                lineHeight: '1.2'
+                fontSize: '13px',
+                color: 'rgba(255, 255, 255, 0.8)',
+                lineHeight: '1.2',
+                fontWeight: '500'
               }}>{user?.role?.displayName || user?.role?.name || user?.role}</div>
             </div>
           </div>
