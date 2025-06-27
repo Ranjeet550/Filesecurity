@@ -154,10 +154,7 @@ const Profile = () => {
       <style>{avatarOverlayStyle}</style>
 
       <div className="profile-container" style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <Title level={4} style={{ marginBottom: '16px', fontSize: '18px' }}>
-          <UserOutlined style={{ marginRight: '8px', fontSize: '16px' }} />
-          My Profile
-        </Title>
+        
 
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
@@ -167,7 +164,7 @@ const Profile = () => {
                 borderRadius: '8px',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                 overflow: 'hidden',
-                padding: '12px'
+                padding: '30px'
               }}
             >
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
@@ -244,11 +241,7 @@ const Profile = () => {
                   {user?.name}
                 </Title>
                 <Text type="secondary" style={{ fontSize: '13px' }} key={`email-${refreshKey}`}>{user?.email}</Text>
-                <div style={{ marginTop: '6px' }} key={`role-${refreshKey}`}>
-                  <Tag color={user?.role === 'admin' ? '#00BF96' : '#1890ff'} style={{ fontSize: '12px' }}>
-                    {user?.role === 'admin' ? 'Administrator' : 'User'}
-                  </Tag>
-                </div>
+               
               </div>
 
               <Divider style={{ margin: '12px 0' }} />

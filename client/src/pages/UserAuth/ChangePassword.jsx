@@ -116,10 +116,7 @@ const ChangePassword = () => {
   return (
     <Sidebar >
       <div className="fade-in" style={{ maxWidth: '500px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '20px' }}>
-          <Title level={4} style={{ margin: '0 0 6px 0', fontSize: '18px' }}>Change Password</Title>
-          <Text type="secondary" style={{ fontSize: '14px' }}>Update your account password</Text>
-        </div>
+        
 
         <Card
           className="dashboard-card"
@@ -204,17 +201,8 @@ const ChangePassword = () => {
               />
             </Form.Item>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={loading}
-                className="gradient-button"
-                size="middle"
-                style={{ fontSize: '14px' }}
-              >
-                Change Password
-              </Button>
+            <div style={{ display: 'flex', gap: '50px', marginTop: '20px' }}>
+            
 
               <Button
                 onClick={handleBackToDashboard}
@@ -223,6 +211,17 @@ const ChangePassword = () => {
                 style={{ fontSize: '14px' }}
               >
                 Cancel
+              </Button>
+
+                <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                className="gradient-button"
+                size="middle"
+                style={{ fontSize: '14px' }}
+              >
+                Change Password
               </Button>
             </div>
           </Form>
