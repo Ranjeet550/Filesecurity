@@ -47,6 +47,19 @@ const RoleManagement = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [form] = Form.useForm();
   const [targetKeys, setTargetKeys] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Responsive detection using window resize
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const fetchRoles = async () => {
     try {
@@ -143,63 +156,109 @@ const RoleManagement = () => {
     description: permission.description
   }));
 
-  const columns = [
-    {
-      title: 'Role',
-      dataIndex: 'displayName',
-      key: 'displayName',
-      render: (text, record) => (
-        <div>
-          <div style={{ fontWeight: '500', display: 'flex', alignItems: 'center' }}>
-            <SafetyOutlined style={{ marginRight: '8px', color: '#00BF96' }} />
-            {text}
-            {record.isSystem && (
-              <Tag color="blue" style={{ marginLeft: '8px' }}>System</Tag>
-            )}
+  // Responsive columns configuration
+  const getColumns = () => {
+    const baseColumns = [
+      {
+        title: 'Role',
+        dataIndex: 'displayName',
+        key: 'displayName',
+        render: (text, record) => (
+          <div>
+            <div style={{ 
+              fontWeight: '500', 
+              display: 'flex', 
+              alignItems: 'center',
+              flexWrap: isMobile ? 'wrap' : 'nowrap'
+            }}>
+              <SafetyOutlined style={{ 
+                marginRight: '8px', 
+                color: '#00BF96',
+                fontSize: isMobile ? '14px' : '16px'
+              }} />
+              <span style={{ 
+                fontSize: isMobile ? '14px' : '16px',
+                marginRight: '8px'
+              }}>
+                {text}
+              </span>
+              {record.isSystem && (
+                <Tag 
+                  color="blue" 
+                  style={{ 
+                    marginLeft: isMobile ? '4px' : '8px',
+                    fontSize: isMobile ? '11px' : '12px'
+                  }}
+                >
+                  System
+                </Tag>
+              )}
+            </div>
+            <div style={{ 
+              fontSize: isMobile ? '11px' : '12px', 
+              color: '#8c8c8c',
+              marginTop: isMobile ? '4px' : '0'
+            }}>
+              {record.name}
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#8c8c8c' }}>{record.name}</div>
-        </div>
-      ),
-    },
-    {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      render: (text) => text || 'No description'
-    },
-    {
-      title: 'Permissions',
-      dataIndex: 'permissions',
-      key: 'permissions',
-      render: (permissions) => (
-        <div>
-          <Text strong>{permissions?.length || 0}</Text>
-          <Text type="secondary"> permissions</Text>
-        </div>
-      )
-    },
-    {
-      title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Active' : 'Inactive'}
-        </Tag>
-      )
-    },
-    {
+        ),
+      }
+    ];
+
+    // Add conditional columns based on screen size
+    if (!isMobile) {
+      baseColumns.push(
+        {
+          title: 'Description',
+          dataIndex: 'description',
+          key: 'description',
+          render: (text) => text || 'No description'
+        },
+        {
+          title: 'Permissions',
+          dataIndex: 'permissions',
+          key: 'permissions',
+          render: (permissions) => (
+            <div>
+              <Text strong>{permissions?.length || 0}</Text>
+              <Text type="secondary"> permissions</Text>
+            </div>
+          )
+        },
+        {
+          title: 'Status',
+          dataIndex: 'isActive',
+          key: 'isActive',
+          render: (isActive) => (
+            <Tag color={isActive ? 'green' : 'red'}>
+              {isActive ? 'Active' : 'Inactive'}
+            </Tag>
+          )
+        }
+      );
+    }
+
+    // Add actions column
+    baseColumns.push({
       title: 'Actions',
       key: 'actions',
+      width: isMobile ? '30%' : '15%',
       render: (_, record) => (
-        <Space>
+        <Space direction={isMobile ? 'vertical' : 'horizontal'} size={isMobile ? 'small' : 'middle'}>
           <Tooltip title="Edit Role">
             <Button
-              type="text"
+              type={isMobile ? 'default' : 'text'}
               icon={<EditOutlined />}
               onClick={() => showEditModal(record)}
-              style={{ color: '#00BF96' }}
-            />
+              style={{ 
+                color: '#00BF96',
+                fontSize: isMobile ? '12px' : '14px'
+              }}
+              size={isMobile ? 'small' : 'middle'}
+            >
+              {isMobile && 'Edit'}
+            </Button>
           </Tooltip>
           {!record.isSystem && (
             <Tooltip title="Delete Role">
@@ -211,17 +270,24 @@ const RoleManagement = () => {
                 cancelText="No"
               >
                 <Button
-                  type="text"
+                  type={isMobile ? 'default' : 'text'}
                   icon={<DeleteOutlined />}
                   danger
-                />
+                  size={isMobile ? 'small' : 'middle'}
+                >
+                  {isMobile && 'Delete'}
+                </Button>
               </Popconfirm>
             </Tooltip>
           )}
         </Space>
       ),
-    },
-  ];
+    });
+
+    return baseColumns;
+  };
+
+  const columns = getColumns();
 
   const stats = {
     total: roles.length,
@@ -231,28 +297,84 @@ const RoleManagement = () => {
 
   return (
     <Sidebar>
-      <div style={{ padding: '24px' }}>
+      <div style={{ 
+        padding: isMobile ? '16px' : '24px',
+        paddingTop: isMobile ? '16px' : '24px'
+      }}>
         <div style={{ marginBottom: '24px' }}>
-          <Title level={2} style={{ margin: 0, color: '#1a1a1a' }}>
-            <TeamOutlined style={{ marginRight: '12px', color: '#00BF96' }} />
+          <Title 
+            level={isMobile ? 3 : 2} 
+            style={{ 
+              margin: 0, 
+              color: '#1a1a1a',
+              fontSize: isMobile ? '20px' : '24px'
+            }}
+          >
+            <TeamOutlined style={{ 
+              marginRight: '12px', 
+              color: '#00BF96',
+              fontSize: isMobile ? '18px' : '20px'
+            }} />
             Role Management
           </Title>
-          <Text type="secondary">Manage user roles and their permissions</Text>
+          <Text type="secondary" style={{ fontSize: isMobile ? '14px' : '16px' }}>
+            Manage user roles and their permissions
+          </Text>
         </div>
 
-       
+        {/* Responsive Statistics Cards */}
+        <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+          <Col xs={24} sm={8}>
+            <Card className="dashboard-card" size={isMobile ? 'small' : 'default'}>
+              <Statistic
+                title="Total Roles"
+                value={stats.total}
+                prefix={<TeamOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="dashboard-card" size={isMobile ? 'small' : 'default'}>
+              <Statistic
+                title="Active Roles"
+                value={stats.active}
+                prefix={<KeyOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="dashboard-card" size={isMobile ? 'small' : 'default'}>
+              <Statistic
+                title="System Roles"
+                value={stats.system}
+                prefix={<SettingOutlined />}
+                valueStyle={{ color: '#00BF96' }}
+              />
+            </Card>
+          </Col>
+        </Row>
 
         {/* Main Content */}
         <Card>
-          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Title level={4} style={{ margin: 0 }}>Roles</Title>
+          <div style={{ 
+            marginBottom: '16px', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '16px' : '0'
+          }}>
+            <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>Roles</Title>
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={showCreateModal}
               style={{ backgroundColor: '#00BF96', borderColor: '#00BF96' }}
+              size={isMobile ? 'small' : 'middle'}
             >
-              Add Role
+              {isMobile ? 'Add' : 'Add Role'}
             </Button>
           </div>
 
@@ -261,12 +383,17 @@ const RoleManagement = () => {
             dataSource={roles}
             rowKey="_id"
             loading={loading}
+            scroll={{ x: isMobile ? 600 : undefined }}
             pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} roles`
+              pageSize: isMobile ? 5 : 10,
+              showSizeChanger: !isMobile,
+              showQuickJumper: !isMobile,
+              showTotal: (total, range) => 
+                isMobile ? `${total} roles` : `${range[0]}-${range[1]} of ${total} roles`,
+              size: isMobile ? 'small' : 'default',
+              position: isMobile ? ['bottomCenter'] : ['bottomRight']
             }}
+            size={isMobile ? 'small' : 'default'}
           />
         </Card>
 
@@ -274,20 +401,28 @@ const RoleManagement = () => {
         <Modal
           title={
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <SafetyOutlined style={{ marginRight: '8px', color: '#00BF96' }} />
-              {modalType === 'create' ? 'Create New Role' : 'Edit Role'}
+              <SafetyOutlined style={{ 
+                marginRight: '8px', 
+                color: '#00BF96',
+                fontSize: isMobile ? '16px' : '18px'
+              }} />
+              <span style={{ fontSize: isMobile ? '16px' : '18px' }}>
+                {modalType === 'create' ? 'Create New Role' : 'Edit Role'}
+              </span>
             </div>
           }
           open={modalVisible}
           onOk={handleModalSubmit}
           onCancel={handleModalCancel}
-          width={800}
+          width={isMobile ? '95%' : 800}
           okText={modalType === 'create' ? 'Create' : 'Update'}
           okButtonProps={{ style: { backgroundColor: '#00BF96', borderColor: '#00BF96' } }}
+          centered
+          style={{ top: isMobile ? 20 : 100 }}
         >
           <Form form={form} layout="vertical" style={{ marginTop: '20px' }}>
-            <Row gutter={16}>
-              <Col span={12}>
+            <Row gutter={isMobile ? 0 : 16}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   name="name"
                   label="Role Name"
@@ -296,16 +431,22 @@ const RoleManagement = () => {
                     { pattern: /^[a-z_]+$/, message: 'Role name must be lowercase with underscores only' }
                   ]}
                 >
-                  <Input placeholder="e.g., manager, editor" />
+                  <Input 
+                    placeholder="e.g., manager, editor" 
+                    size={isMobile ? 'middle' : 'large'}
+                  />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   name="displayName"
                   label="Display Name"
                   rules={[{ required: true, message: 'Please enter display name' }]}
                 >
-                  <Input placeholder="e.g., Manager, Content Editor" />
+                  <Input 
+                    placeholder="e.g., Manager, Content Editor" 
+                    size={isMobile ? 'middle' : 'large'}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -315,8 +456,9 @@ const RoleManagement = () => {
               label="Description"
             >
               <TextArea
-                rows={3}
+                rows={isMobile ? 2 : 3}
                 placeholder="Describe the role and its responsibilities"
+                size={isMobile ? 'middle' : 'large'}
               />
             </Form.Item>
 
@@ -328,11 +470,15 @@ const RoleManagement = () => {
                 render={item => item.title}
                 titles={['Available Permissions', 'Assigned Permissions']}
                 style={{ marginBottom: 16 }}
-                listStyle={{ width: 300, height: 300 }}
+                listStyle={{ 
+                  width: isMobile ? '100%' : 300, 
+                  height: isMobile ? 200 : 300 
+                }}
                 showSearch
                 filterOption={(inputValue, option) =>
                   option.title.toLowerCase().includes(inputValue.toLowerCase())
                 }
+                size={isMobile ? 'small' : 'default'}
               />
             </Form.Item>
           </Form>

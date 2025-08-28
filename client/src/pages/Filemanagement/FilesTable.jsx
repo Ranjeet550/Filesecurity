@@ -77,7 +77,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
     },
     headerCell: {
       background: token.colorBgContainer,
-      fontWeight: 600,
+      fontWeight: 700,
       color: token.colorTextHeading,
       padding: '16px',
       borderBottom: `2px solid ${token.colorBorderSecondary}`,
@@ -424,7 +424,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       justifyContent: 'space-between',
       flexWrap: 'wrap',
       gap: '16px',
-      padding: '16px 20px',
+      padding: '10px 15px',
       borderBottom: '1px solid #f0f0f0'
     },
     title: {
@@ -457,9 +457,9 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
 
   return (
     <>
-      <Card
       
-      >
+      
+      
         <div style={responsiveStyles.header}>
           <div style={responsiveStyles.title}>
             {activeView === 'all-files' ? (
@@ -549,7 +549,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
             },
           })}
         />
-      </Card>
+    
 
       {/* Download Modal */}
       <Modal

@@ -42,6 +42,18 @@ const PermissionManagement = () => {
   const [modalType, setModalType] = useState('create');
   const [selectedPermission, setSelectedPermission] = useState(null);
   const [form] = Form.useForm();
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Responsive detection using window resize
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const fetchPermissions = async () => {
     try {
@@ -145,63 +157,75 @@ const PermissionManagement = () => {
     return icons[action] || <KeyOutlined />;
   };
 
-  const columns = [
-    {
-      title: 'Permission',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text, record) => (
-        <div>
-          <div style={{ fontWeight: '500', display: 'flex', alignItems: 'center' }}>
-            <KeyOutlined style={{ marginRight: '8px', color: '#00BF96' }} />
-            {text}
+  // Responsive columns configuration
+  const getColumns = () => {
+    const baseColumns = [
+      {
+        title: 'Permission',
+        dataIndex: 'name',
+        key: 'name',
+        render: (text, record) => (
+          <div>
+            <div style={{ fontWeight: '500', display: 'flex', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+              <KeyOutlined style={{ marginRight: '8px', color: '#00BF96', fontSize: isMobile ? '14px' : '16px' }} />
+              <span style={{ fontSize: isMobile ? '14px' : '16px' }}>{text}</span>
+            </div>
+            <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#8c8c8c', marginTop: isMobile ? '4px' : '0' }}>
+              {record.module?.displayName}
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
-            {record.module?.displayName}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Module',
-      dataIndex: ['module', 'displayName'],
-      key: 'module',
-      render: (text, record) => (
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <AppstoreOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-          {text}
-        </div>
-      )
-    },
-    
-    {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      render: (text) => text || 'No description'
-    },
-    {
-      title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Active' : 'Inactive'}
-        </Tag>
-      )
-    },
-    {
+        ),
+      }
+    ];
+
+    if (!isMobile) {
+      baseColumns.push(
+        {
+          title: 'Module',
+          dataIndex: ['module', 'displayName'],
+          key: 'module',
+          render: (text) => (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <AppstoreOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+              {text}
+            </div>
+          )
+        },
+        {
+          title: 'Description',
+          dataIndex: 'description',
+          key: 'description',
+          render: (text) => text || 'No description'
+        },
+        {
+          title: 'Status',
+          dataIndex: 'isActive',
+          key: 'isActive',
+          render: (isActive) => (
+            <Tag color={isActive ? 'green' : 'red'}>
+              {isActive ? 'Active' : 'Inactive'}
+            </Tag>
+          )
+        }
+      );
+    }
+
+    baseColumns.push({
       title: 'Actions',
       key: 'actions',
+      width: isMobile ? '30%' : '15%',
       render: (_, record) => (
-        <Space>
+        <Space direction={isMobile ? 'vertical' : 'horizontal'} size={isMobile ? 'small' : 'middle'}>
           <Tooltip title="Edit Permission">
             <Button
-              type="text"
+              type={isMobile ? 'default' : 'text'}
               icon={<EditOutlined />}
               onClick={() => showEditModal(record)}
-              style={{ color: '#00BF96' }}
-            />
+              style={{ color: '#00BF96', fontSize: isMobile ? '12px' : '14px' }}
+              size={isMobile ? 'small' : 'middle'}
+            >
+              {isMobile && 'Edit'}
+            </Button>
           </Tooltip>
           <Tooltip title="Delete Permission">
             <Popconfirm
@@ -212,16 +236,23 @@ const PermissionManagement = () => {
               cancelText="No"
             >
               <Button
-                type="text"
+                type={isMobile ? 'default' : 'text'}
                 icon={<DeleteOutlined />}
                 danger
-              />
+                size={isMobile ? 'small' : 'middle'}
+              >
+                {isMobile && 'Delete'}
+              </Button>
             </Popconfirm>
           </Tooltip>
         </Space>
       ),
-    },
-  ];
+    });
+
+    return baseColumns;
+  };
+
+  const columns = getColumns();
 
   const stats = {
     total: permissions.length,
@@ -234,28 +265,46 @@ const PermissionManagement = () => {
 
   return (
     <Sidebar>
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: isMobile ? '16px' : '24px', paddingTop: isMobile ? '16px' : '24px' }}>
         <div style={{ marginBottom: '24px' }}>
-          <Title level={2} style={{ margin: 0, color: '#1a1a1a' }}>
-            <KeyOutlined style={{ marginRight: '12px', color: '#00BF96' }} />
+          <Title level={isMobile ? 3 : 2} style={{ margin: 0, color: '#1a1a1a', fontSize: isMobile ? '20px' : '24px' }}>
+            <KeyOutlined style={{ marginRight: '12px', color: '#00BF96', fontSize: isMobile ? '18px' : '20px' }} />
             Permission Management
           </Title>
-          <Text type="secondary">Manage system permissions and access controls</Text>
+          <Text type="secondary" style={{ fontSize: isMobile ? '14px' : '16px' }}>Manage system permissions and access controls</Text>
         </div>
 
-       
+        {/* Responsive Statistics Cards */}
+        <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+          <Col xs={24} sm={8}>
+            <Card className="dashboard-card" size={isMobile ? 'small' : 'default'}>
+              <Statistic title="Total Permissions" value={stats.total} prefix={<FileOutlined />} valueStyle={{ color: '#1890ff' }} />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="dashboard-card" size={isMobile ? 'small' : 'default'}>
+              <Statistic title="Active" value={stats.active} prefix={<SafetyOutlined />} valueStyle={{ color: '#52c41a' }} />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="dashboard-card" size={isMobile ? 'small' : 'default'}>
+              <Statistic title="Create/Read/Update/Delete" value={`${stats.byAction.create || 0}/${stats.byAction.read || 0}/${stats.byAction.update || 0}/${stats.byAction.delete || 0}`} />
+            </Card>
+          </Col>
+        </Row>
 
         {/* Main Content */}
         <Card>
-          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Title level={4} style={{ margin: 0 }}>Permissions</Title>
+          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '16px' : '0' }}>
+            <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>Permissions</Title>
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={showCreateModal}
               style={{ backgroundColor: '#00BF96', borderColor: '#00BF96' }}
+              size={isMobile ? 'small' : 'middle'}
             >
-              Add Permission
+              {isMobile ? 'Add' : 'Add Permission'}
             </Button>
           </div>
 
@@ -264,12 +313,16 @@ const PermissionManagement = () => {
             dataSource={permissions}
             rowKey="_id"
             loading={loading}
+            scroll={{ x: isMobile ? 700 : undefined }}
             pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} permissions`
+              pageSize: isMobile ? 5 : 10,
+              showSizeChanger: !isMobile,
+              showQuickJumper: !isMobile,
+              showTotal: (total, range) => isMobile ? `${total} permissions` : `${range[0]}-${range[1]} of ${total} permissions`,
+              size: isMobile ? 'small' : 'default',
+              position: isMobile ? ['bottomCenter'] : ['bottomRight']
             }}
+            size={isMobile ? 'small' : 'default'}
           />
         </Card>
 
@@ -277,16 +330,20 @@ const PermissionManagement = () => {
         <Modal
           title={
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <KeyOutlined style={{ marginRight: '8px', color: '#00BF96' }} />
-              {modalType === 'create' ? 'Create New Permission' : 'Edit Permission'}
+              <KeyOutlined style={{ marginRight: '8px', color: '#00BF96', fontSize: isMobile ? '16px' : '18px' }} />
+              <span style={{ fontSize: isMobile ? '16px' : '18px' }}>
+                {modalType === 'create' ? 'Create New Permission' : 'Edit Permission'}
+              </span>
             </div>
           }
           open={modalVisible}
           onOk={handleModalSubmit}
           onCancel={handleModalCancel}
-          width={600}
+          width={isMobile ? '95%' : 600}
           okText={modalType === 'create' ? 'Create' : 'Update'}
           okButtonProps={{ style: { backgroundColor: '#00BF96', borderColor: '#00BF96' } }}
+          centered
+          style={{ top: isMobile ? 20 : 100 }}
         >
           <Form form={form} layout="vertical" style={{ marginTop: '20px' }}>
             <Form.Item
@@ -294,17 +351,17 @@ const PermissionManagement = () => {
               label="Permission Name"
               rules={[{ required: true, message: 'Please enter permission name' }]}
             >
-              <Input placeholder="e.g., User Management - Create" />
+              <Input placeholder="e.g., User Management - Create" size={isMobile ? 'middle' : 'large'} />
             </Form.Item>
 
-            <Row gutter={16}>
-              <Col span={12}>
+            <Row gutter={isMobile ? 0 : 16}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   name="module"
                   label="Module"
                   rules={[{ required: true, message: 'Please select module' }]}
                 >
-                  <Select placeholder="Select module">
+                  <Select placeholder="Select module" size={isMobile ? 'middle' : 'large'}>
                     {modules.map(module => (
                       <Option key={module._id} value={module._id}>
                         {module.displayName}
@@ -313,13 +370,13 @@ const PermissionManagement = () => {
                   </Select>
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   name="action"
                   label="Action"
                   rules={[{ required: true, message: 'Please select action' }]}
                 >
-                  <Select placeholder="Select action">
+                  <Select placeholder="Select action" size={isMobile ? 'middle' : 'large'}>
                     <Option value="create">Create</Option>
                     <Option value="read">Read</Option>
                     <Option value="update">Update</Option>
@@ -334,7 +391,7 @@ const PermissionManagement = () => {
               label="Description"
             >
               <Input.TextArea
-                rows={3}
+                rows={isMobile ? 2 : 3}
                 placeholder="Describe what this permission allows"
               />
             </Form.Item>

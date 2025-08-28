@@ -143,13 +143,13 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            padding: '10px 18px',
-            borderRadius: '15px',
+            padding: '4px 6px',
+            borderRadius: '2px',
             transition: 'all 0.3s ease',
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(15px)',
+            backdropFilter: 'blur(10px)',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(52, 152, 219, 0.1) 100%)';

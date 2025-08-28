@@ -242,7 +242,7 @@ const FileUpload = () => {
                       padding: '20px',
                      
                       borderRadius: '6px',
-                      border: '1px solid #b7eb8f'
+                      border: '2px solid #b7eb8f'
                     }}>
                       <div style={{
                         width: '32px',
