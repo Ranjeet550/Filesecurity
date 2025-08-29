@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Typography,
   Upload,
@@ -31,7 +31,8 @@ import {
   FileProtectOutlined,
   CloudUploadOutlined,
   SecurityScanOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
@@ -47,10 +48,53 @@ const FileUpload = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [error, setError] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [useCustomPassword, setUseCustomPassword] = useState(false);
+  const [customPassword, setCustomPassword] = useState('');
+
+  // Function to generate a 10-character alphanumeric password with special characters
+  const generatePassword = () => {
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    const specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    
+    let password = '';
+    
+    // Ensure at least one character from each category
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += specialChars[Math.floor(Math.random() * specialChars.length)];
+    
+    // Fill the remaining 6 characters with random selection from all categories
+    const allChars = lowercase + uppercase + numbers + specialChars;
+    for (let i = 0; i < 6; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+    
+    // Shuffle the password to make it more random
+    password = password.split('').sort(() => Math.random() - 0.5).join('');
+    
+    setGeneratedPassword(password);
+    message.success('New password generated successfully!');
+  };
+
+  // Generate password on component mount
+  useEffect(() => {
+    generatePassword();
+  }, []);
 
   const handleUpload = async () => {
     if (fileList.length === 0) {
       message.error('Please select a file to upload');
+      return;
+    }
+
+    const currentPassword = useCustomPassword ? customPassword : generatedPassword;
+    
+    if (!currentPassword || currentPassword.length < 8) {
+      message.error('Please enter a password with at least 8 characters for file encryption');
       return;
     }
 
@@ -61,7 +105,8 @@ const FileUpload = () => {
       name: file.name,
       type: file.type,
       size: file.size,
-      lastModified: new Date(file.lastModified).toISOString()
+      lastModified: new Date(file.lastModified).toISOString(),
+      password: currentPassword
     });
 
     try {
@@ -69,7 +114,16 @@ const FileUpload = () => {
       setError(null);
       setCurrentStep(1);
 
-      const response = await uploadFile(file);
+      // Create a custom file object with password
+      const fileWithPassword = new File([file], file.name, {
+        type: file.type,
+        lastModified: file.lastModified
+      });
+
+      // Add password to the file object for the upload service
+      fileWithPassword.password = currentPassword;
+
+      const response = await uploadFile(fileWithPassword);
       console.log('Upload response:', response);
 
       if (response && response.data) {
@@ -411,18 +465,203 @@ const FileUpload = () => {
                     <Title level={4} style={{ margin: '0 0 8px 0', color: '#262626', fontSize: '16px' }}>
                       Drop your file here or click to browse
                     </Title>
-                    <Text style={{
-                      fontSize: '13px',
-                      color: '#8c8c8c',
-                      display: 'block',
-                      maxWidth: '400px',
-                      margin: '0 auto'
-                    }}>
-                      Your file will be automatically encrypted with 256-bit AES encryption and password-protected.
-                    </Text>
+                                      <Text style={{
+                    fontSize: '13px',
+                    color: '#8c8c8c',
+                    display: 'block',
+                    maxWidth: '400px',
+                    margin: '0 auto'
+                  }}>
+                    Your file will be automatically encrypted with 256-bit AES encryption and protected with a 10-character alphanumeric password including special characters.
+                  </Text>
                   </div>
                 </Dragger>
               </div>
+
+              {/* Password Generation Section */}
+              <Card 
+                size="small" 
+                style={{ 
+                  marginBottom: '16px', 
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #fff7e6 0%, #f6ffed 100%)',
+                  border: '1px solid #ffe7ba'
+                }}
+                title={
+                  <span style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+                    <LockOutlined style={{ marginRight: '6px', color: '#fa8c16' }} />
+                    File Password
+                  </span>
+                }
+              >
+                <Row gutter={[12, 12]} align="middle">
+                  <Col xs={24} sm={16}>
+                    {useCustomPassword ? (
+                      <Input.Password
+                        value={customPassword}
+                        onChange={(e) => setCustomPassword(e.target.value)}
+                        placeholder="Enter custom password (min 8 characters)"
+                        size="large"
+                        style={{ 
+                          fontFamily: 'monospace', 
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          letterSpacing: '2px'
+                        }}
+                        prefix={<LockOutlined style={{ color: '#fa8c16' }} />}
+                        addonAfter={
+                          <Tooltip title="Copy Password">
+                            <CopyOutlined
+                              onClick={() => {
+                                navigator.clipboard.writeText(customPassword);
+                                message.success('Password copied to clipboard!');
+                              }}
+                              style={{ cursor: 'pointer', color: '#1890ff' }}
+                            />
+                          </Tooltip>
+                        }
+                      />
+                    ) : (
+                      <Input.Password
+                        value={generatedPassword}
+                        readOnly
+                        size="large"
+                        style={{ 
+                          fontFamily: 'monospace', 
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          letterSpacing: '2px'
+                        }}
+                        prefix={<LockOutlined style={{ color: '#fa8c16' }} />}
+                        addonAfter={
+                          <Tooltip title="Copy Password">
+                            <CopyOutlined
+                              onClick={() => {
+                                navigator.clipboard.writeText(generatedPassword);
+                                message.success('Password copied to clipboard!');
+                              }}
+                              style={{ cursor: 'pointer', color: '#1890ff' }}
+                            />
+                          </Tooltip>
+                        }
+                      />
+                    )}
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    {useCustomPassword ? (
+                      <Button
+                        type="default"
+                        icon={<ReloadOutlined />}
+                        onClick={() => {
+                          setUseCustomPassword(false);
+                          setCustomPassword('');
+                        }}
+                        style={{
+                          borderRadius: '6px',
+                          height: '40px',
+                          width: '100%',
+                          borderColor: '#52c41a',
+                          color: '#52c41a'
+                        }}
+                      >
+                        Use Auto
+                      </Button>
+                    ) : (
+                      <Button
+                        type="default"
+                        icon={<ReloadOutlined />}
+                        onClick={generatePassword}
+                        style={{
+                          borderRadius: '6px',
+                          height: '40px',
+                          width: '100%',
+                          borderColor: '#fa8c16',
+                          color: '#fa8c16'
+                        }}
+                      >
+                        Generate New
+                      </Button>
+                    )}
+                  </Col>
+                </Row>
+                
+                {/* Toggle between auto and custom password */}
+                <div style={{ marginTop: '8px', textAlign: 'center' }}>
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => setUseCustomPassword(!useCustomPassword)}
+                    style={{ fontSize: '20px', padding: '0' }}
+                  >
+                    {useCustomPassword ? 'Use auto-generated password' : 'Use custom password'}
+                  </Button>
+                  
+                  {useCustomPassword && (
+                    <div style={{ marginTop: '4px' }}>
+                      <Text style={{ fontSize: '11px', color: '#8c8c8c' }}>
+                        Custom password must be at least 8 characters long
+                      </Text>
+                    </div>
+                  )}
+                </div>
+                <div style={{
+                  background: '#fff7e6',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  marginTop: '8px',
+                  border: '1px solid #ffe7ba'
+                }}>
+                  <Text style={{ fontSize: '12px', color: '#8c6e00' }}>
+                    <InfoCircleOutlined style={{ marginRight: '4px' }} />
+                    This password will be used to encrypt your file. You can generate a new one or use the current one.
+                  </Text>
+                </div>
+                
+                {/* Password Strength Indicator */}
+                <div style={{ marginTop: '8px' }}>
+                  <Text style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px', display: 'block' }}>
+                    Password Strength:
+                  </Text>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {[...Array(5)].map((_, index) => {
+                      const currentPassword = useCustomPassword ? customPassword : generatedPassword;
+                      let color = '#f0f0f0';
+                      
+                      if (currentPassword.length >= 8) {
+                        if (index < 2) color = '#ff4d4f'; // Weak
+                        else if (index < 4) color = '#faad14'; // Medium
+                        else color = '#52c41a'; // Strong
+                      } else if (currentPassword.length >= 6) {
+                        if (index < 3) color = '#faad14'; // Medium
+                        else color = '#52c41a'; // Strong
+                      } else if (currentPassword.length >= 4) {
+                        color = '#52c41a'; // Strong
+                      }
+                      
+                      return (
+                        <div
+                          key={index}
+                          style={{
+                            width: '20px',
+                            height: '4px',
+                            backgroundColor: color,
+                            borderRadius: '2px',
+                            transition: 'background-color 0.3s ease'
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <Text style={{ 
+                    fontSize: '11px', 
+                    color: (useCustomPassword ? customPassword : generatedPassword).length >= 8 ? '#52c41a' : '#faad14',
+                    marginTop: '4px',
+                    display: 'block'
+                  }}>
+                    {(useCustomPassword ? customPassword : generatedPassword).length >= 8 ? 'Strong Password' : 'Password too short'}
+                  </Text>
+                </div>
+              </Card>
 
               <div style={{ textAlign: 'center', marginTop: '16px' }}>
                 <Button

@@ -12,11 +12,32 @@ exports.uploadFile = async (req, res) => {
   try {
     console.log('Upload request received');
     console.log('Request body:', req.body);
-    console.log('Request file:', req.file);
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Password in body:', req.body.password);
+    console.log('Request files:', req.files);
     console.log('User:', req.user);
-    console.log('User location:', req.userLocation);
+    
+    // Extract location data from form fields
+    let userLocation = {
+      latitude: 0,
+      longitude: 0,
+      city: 'Unknown',
+      country: 'Unknown'
+    };
+    
+    if (req.body.latitude && req.body.longitude) {
+      userLocation = {
+        latitude: parseFloat(req.body.latitude) || 0,
+        longitude: parseFloat(req.body.longitude) || 0,
+        city: req.body.city || 'Unknown',
+        country: req.body.country || 'Unknown'
+      };
+      console.log('Location data extracted from form:', userLocation);
+    } else {
+      console.log('No location data found in form, using default');
+    }
 
-    if (!req.file) {
+    if (!req.files || !req.files.file || req.files.file.length === 0) {
       console.log('No file found in request');
       return res.status(400).json({
         success: false,
@@ -24,29 +45,50 @@ exports.uploadFile = async (req, res) => {
       });
     }
 
+    const uploadedFile = req.files.file[0];
     console.log('File details:', {
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      path: req.file.path,
-      size: req.file.size,
-      mimetype: req.file.mimetype
+      filename: uploadedFile.filename,
+      originalName: uploadedFile.originalname,
+      path: uploadedFile.path,
+      size: uploadedFile.size,
+      mimetype: uploadedFile.mimetype
     });
 
-    // Generate a password for the file
-    const password = File.generatePassword();
-    console.log('Generated password:', password);
+    // Check if a custom password was provided, otherwise generate one
+    let password;
+    console.log('Request body for password check:', req.body);
+    console.log('Password field in body:', req.body.password);
+    console.log('Password field type:', typeof req.body.password);
+    
+    if (req.body.password && req.body.password.trim()) {
+      const customPassword = req.body.password.trim();
+      
+      // Validate custom password length (minimum 8 characters)
+      if (customPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: 'Custom password must be at least 8 characters long'
+        });
+      }
+      
+      password = customPassword;
+      console.log('Using custom password from request:', password);
+    } else {
+      password = File.generatePassword();
+      console.log('Generated random password:', password);
+    }
 
     // Normalize the file path to ensure consistency
-    const normalizedPath = path.normalize(req.file.path);
-    console.log('Original file path:', req.file.path);
+    const normalizedPath = path.normalize(uploadedFile.path);
+    console.log('Original file path:', uploadedFile.path);
     console.log('Normalized file path:', normalizedPath);
 
     // Determine the correct MIME type based on file extension if not provided
-    let mimeType = req.file.mimetype;
+    let mimeType = uploadedFile.mimetype;
 
-    // If mimetype is missing or generic, determine it from the file extension
-    if (!mimeType || mimeType === 'application/octet-stream') {
-      const ext = path.extname(req.file.originalname).toLowerCase();
+          // If mimetype is missing or generic, determine it from the file extension
+      if (!mimeType || mimeType === 'application/octet-stream') {
+        const ext = path.extname(uploadedFile.originalname).toLowerCase();
 
       // Map common extensions to MIME types
       const mimeTypes = {
@@ -73,8 +115,8 @@ exports.uploadFile = async (req, res) => {
 
     // Handle file protection based on file type
     let finalFilePath = normalizedPath;
-    let finalFilename = req.file.filename;
-    let finalSize = req.file.size;
+    let finalFilename = uploadedFile.filename;
+    let finalSize = uploadedFile.size;
 
     if (mimeType === 'application/pdf') {
       try {
@@ -82,7 +124,7 @@ exports.uploadFile = async (req, res) => {
         const protectionResult = await protectUploadedPDF(
           normalizedPath,
           password,
-          req.file.originalname
+          uploadedFile.originalname
         );
 
         if (protectionResult.success) {
@@ -96,7 +138,7 @@ exports.uploadFile = async (req, res) => {
           console.log('PDF protection successful:', {
             originalPath: normalizedPath,
             protectedPath: finalFilePath,
-            originalSize: req.file.size,
+            originalSize: uploadedFile.size,
             protectedSize: finalSize
           });
         }
@@ -112,7 +154,7 @@ exports.uploadFile = async (req, res) => {
         const protectionResult = await protectUploadedExcel(
           normalizedPath,
           password,
-          req.file.originalname
+          uploadedFile.originalname
         );
 
         if (protectionResult.success) {
@@ -126,7 +168,7 @@ exports.uploadFile = async (req, res) => {
           console.log('Excel protection successful:', {
             originalPath: normalizedPath,
             protectedPath: finalFilePath,
-            originalSize: req.file.size,
+            originalSize: uploadedFile.size,
             protectedSize: finalSize,
             protection: protectionResult.protection
           });
@@ -141,13 +183,13 @@ exports.uploadFile = async (req, res) => {
     // Create file record in database
     const file = await File.create({
       filename: finalFilename,
-      originalName: req.file.originalname,
+      originalName: uploadedFile.originalname,
       path: finalFilePath,
       size: finalSize,
       mimetype: mimeType,
       password: password,
       uploadedBy: req.user.id,
-      uploadLocation: req.userLocation
+      uploadLocation: userLocation
     });
 
     // Log file upload activity
@@ -166,7 +208,7 @@ exports.uploadFile = async (req, res) => {
       method: req.method,
       path: req.originalUrl,
       statusCode: 201,
-      location: req.userLocation,
+      location: userLocation,
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
@@ -195,7 +237,7 @@ exports.uploadFile = async (req, res) => {
 exports.getFiles = async (req, res) => {
   try {
     let query = {};
-    let selectFields = 'originalName size createdAt expiresAt downloads mimetype';
+    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation';
     let populateOptions = null;
 
     // Check if user has admin role
@@ -276,7 +318,8 @@ exports.getFile = async (req, res) => {
         filename: file.originalName,
         size: file.size,
         uploadedAt: file.createdAt,
-        downloads: file.downloads.length
+        downloads: file.downloads.length,
+        uploadLocation: file.uploadLocation
       }
     });
   } catch (error) {
@@ -321,9 +364,18 @@ exports.downloadFile = async (req, res) => {
 
     // Record download information (always record, even for anonymous downloads)
     console.log('Recording download for file:', file._id, 'User:', req.user ? req.user.id : 'anonymous');
+    
+    // Ensure location data is available
+    const downloadLocation = req.userLocation || {
+      latitude: 0,
+      longitude: 0,
+      city: 'Unknown',
+      country: 'Unknown'
+    };
+    
     file.downloads.push({
       user: req.user ? req.user.id : null,
-      location: req.userLocation
+      location: downloadLocation
     });
     await file.save();
     console.log('Download recorded. Total downloads for this file:', file.downloads.length);
@@ -382,7 +434,7 @@ exports.downloadFile = async (req, res) => {
         method: req.method,
         path: req.originalUrl,
         statusCode: 404,
-        location: req.userLocation,
+        location: downloadLocation,
         userAgent: req.headers['user-agent'] || 'Unknown'
       });
 
@@ -409,7 +461,7 @@ exports.downloadFile = async (req, res) => {
       method: req.method,
       path: req.originalUrl,
       statusCode: 200,
-      location: req.userLocation,
+      location: downloadLocation,
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
@@ -574,7 +626,7 @@ exports.getFilePassword = async (req, res) => {
       method: req.method,
       path: req.originalUrl,
       statusCode: 200,
-      location: req.userLocation,
+      location: req.userLocation || { latitude: 0, longitude: 0, city: 'Unknown', country: 'Unknown' },
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
@@ -645,7 +697,7 @@ exports.deleteFile = async (req, res) => {
       method: req.method,
       path: req.originalUrl,
       statusCode: 200,
-      location: req.userLocation,
+      location: req.userLocation || { latitude: 0, longitude: 0, city: 'Unknown', country: 'Unknown' },
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 

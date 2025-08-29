@@ -14,10 +14,17 @@ const upload = require('../middleware/upload');
 
 const router = express.Router();
 
-// Apply location tracking middleware to all routes
-router.use(trackLocation);
+// Apply location tracking middleware to all routes except upload (which needs special handling)
+router.use((req, res, next) => {
+  if (req.path === '/upload' && req.method === 'POST') {
+    // Skip location tracking for upload route - it will be handled in the controller
+    next();
+  } else {
+    trackLocation(req, res, next);
+  }
+});
 
-router.post('/upload', protect, checkPermission('file_management', 'create'), upload.single('file'), uploadFile);
+router.post('/upload', protect, checkPermission('file_management', 'create'), upload.fields([{ name: 'file', maxCount: 1 }]), uploadFile);
 router.get('/', protect, checkPermission('file_management', 'read'), getFiles);
 router.get('/:id', protect, checkPermission('file_management', 'read'), getFile);
 router.get('/:id/password', protect, checkPermission('file_management', 'read'), getFilePassword);

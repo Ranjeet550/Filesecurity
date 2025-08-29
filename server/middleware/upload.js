@@ -56,11 +56,16 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-// Initialize upload
+// Initialize upload with better form field handling
 const upload = multer({
   storage: storage,
   // No file size limits - unlimited storage
-  fileFilter: fileFilter
+  fileFilter: fileFilter,
+  // Ensure form fields are preserved
+  limits: {
+    fieldSize: 1024 * 1024, // 1MB for field values
+    fieldNameSize: 100
+  }
 });
 
 module.exports = upload;

@@ -111,6 +111,12 @@ export const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
+    // Add password if provided
+    if (file.password) {
+      formData.append('password', file.password);
+      console.log('Password included in upload:', file.password);
+    }
+
     // Add location data to the form data
     formData.append('latitude', location.latitude.toString());
     formData.append('longitude', location.longitude.toString());
@@ -118,9 +124,19 @@ export const uploadFile = async (file) => {
     formData.append('country', location.country);
 
     // Log the form data for debugging
+    console.log('FormData contents:');
     for (let [key, value] of formData.entries()) {
       console.log(`Form data: ${key} = ${value instanceof File ? value.name : value}`);
     }
+    
+    // Also log the file object to see if password is attached
+    console.log('File object being uploaded:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      hasPassword: !!file.password,
+      password: file.password
+    });
 
     const response = await axios.post(`${FILES_API_URL}/upload`, formData, {
       headers: {

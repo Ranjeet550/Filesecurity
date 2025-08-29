@@ -66,8 +66,30 @@ const FileSchema = new mongoose.Schema({
 
 // Generate a random password for the file
 FileSchema.statics.generatePassword = function() {
-  // Generate a random 8-character password
-  return crypto.randomBytes(4).toString('hex');
+  // Generate a 10-character alphanumeric password with special characters
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const numbers = '0123456789';
+  const specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  
+  let password = '';
+  
+  // Ensure at least one character from each category
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += specialChars[Math.floor(Math.random() * specialChars.length)];
+  
+  // Fill the remaining 6 characters with random selection from all categories
+  const allChars = lowercase + uppercase + numbers + specialChars;
+  for (let i = 0; i < 6; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+  
+  // Shuffle the password to make it more random
+  password = password.split('').sort(() => Math.random() - 0.5).join('');
+  
+  return password;
 };
 
 // Check if the provided password matches the file password
