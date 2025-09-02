@@ -1,3 +1,14 @@
+// Assign file to users (admin only)
+export const assignFileToUsers = async (fileId, userIds) => {
+  try {
+    const api = authAxios();
+    const response = await api.post(`${FILES_API_URL}/${fileId}/assign`, { userIds });
+    return response.data;
+  } catch (error) {
+    console.error('Error assigning file to users:', error);
+    throw error.response?.data || error.message;
+  }
+};
 import axios from 'axios';
 import { FILES_API_URL } from '../config';
 

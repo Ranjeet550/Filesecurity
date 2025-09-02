@@ -41,9 +41,9 @@ function App() {
                 </PrivateRoute>
               } />
               <Route path="/upload" element={
-                <PrivateRoute>
+                <PermissionRoute moduleName="file_management" action="create">
                   <FileUpload />
-                </PrivateRoute>
+                </PermissionRoute>
               } />
               <Route path="/change-password" element={
                 <PrivateRoute>
@@ -99,6 +99,33 @@ const AdminRoute = ({ children }) => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   if (!token || (user.role?.name !== 'admin' && user.role !== 'admin')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+// Permission-based route component
+const PermissionRoute = ({ children, moduleName, action }) => {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check permission from stored user
+  const hasPerm = Array.isArray(user?.role?.permissions)
+    ? user.role.permissions.some(
+        (p) => p?.module?.name === moduleName && p?.action === action && p?.isActive !== false
+      )
+    : false;
+
+  if (user?.role?.name === 'admin' || user?.role === 'admin') {
+    return children;
+  }
+
+  if (!hasPerm) {
     return <Navigate to="/dashboard" replace />;
   }
 

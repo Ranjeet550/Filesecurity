@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import { hasPermission, isAdmin } from '../utils/permissions';
 import Header from './Header';
 import './Sidebar.css';
 
@@ -166,7 +167,8 @@ const Sidebar = ({ children }) => {
                 icon: <FileOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
                 label: <span className="sidebar-menu-link">File Management</span>,
                 children: [
-                  {
+                  // Show Upload only if user has create permission on file_management
+                  ...(hasPermission(user, 'file_management', 'create') ? [{
                     key: '/upload',
                     icon: <UploadOutlined style={{ fontSize: '14px', color: '#52c41a' }} />,
                     label: (
@@ -174,8 +176,9 @@ const Sidebar = ({ children }) => {
                         Upload File
                       </Link>
                     )
-                  },
-                  {
+                  }] : []),
+                  // Show All Files for admin and viewer roles
+                  ...((isAdmin(user) || user?.role?.name === 'viewer') ? [{
                     key: '/all-files',
                     icon: <AppstoreOutlined style={{ fontSize: '14px', color: '#1890ff' }} />,
                     label: (
@@ -183,11 +186,11 @@ const Sidebar = ({ children }) => {
                         All Files
                       </Link>
                     )
-                  }
+                  }] : [])
                 ]
               },
 
-              ...(user?.role?.name === 'admin' ? [
+              ...(isAdmin(user) ? [
                 {
                   key: 'user-management',
                   icon: <TeamOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,

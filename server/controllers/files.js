@@ -231,42 +231,34 @@ exports.uploadFile = async (req, res) => {
   }
 };
 
-// @desc    Get all files uploaded by user (or all files for admin)
+// @desc    Get all files assigned to user (or all files for admin)
 // @route   GET /api/files
 // @access  Private (requires file_management read permission)
 exports.getFiles = async (req, res) => {
   try {
     let query = {};
-    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation';
-    let populateOptions = null;
-
-    // Check if user has admin role
+    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy';
+    // Always populate uploadedBy with name/email for all users
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
 
     if (isAdmin) {
-      // Admin can see all files with uploader information
+      // Admin can see all files
       query = {}; // No filter - get all files
-      selectFields += ' uploadedBy';
-      populateOptions = {
-        path: 'uploadedBy',
-        select: 'name email'
-      };
       console.log('Admin user requesting all files');
     } else {
-      // Regular users can only see their own files
-      query = { uploadedBy: req.user.id };
-      console.log(`Regular user ${req.user.email} requesting their files`);
+      // Regular users can only see files assigned to them or uploaded by them
+      query = { $or: [
+        { assignedTo: req.user.id },
+        { uploadedBy: req.user.id }
+      ] };
+      console.log(`User ${req.user.email} requesting their assigned files`);
     }
 
     let filesQuery = File.find(query)
       .select(selectFields)
-      .sort('-createdAt');
-
-    // Populate uploadedBy field for admin users
-    if (populateOptions) {
-      filesQuery = filesQuery.populate(populateOptions);
-    }
+      .sort('-createdAt')
+      .populate({ path: 'uploadedBy', select: 'name email' });
 
     const files = await filesQuery;
 
@@ -285,6 +277,39 @@ exports.getFiles = async (req, res) => {
   }
 };
 
+// @desc    Assign a file to users (admin only)
+// @route   POST /api/files/:id/assign
+// @access  Private (admin only)
+exports.assignFileToUsers = async (req, res) => {
+  try {
+    const userRole = req.user.role;
+    const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, message: 'Only admin can assign files.' });
+    }
+
+    const fileId = req.params.id;
+    const { userIds } = req.body; // expects array of user IDs
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'userIds array is required.' });
+    }
+
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found.' });
+    }
+
+    // Assign users (avoid duplicates)
+    file.assignedTo = Array.from(new Set([...(file.assignedTo || []), ...userIds]));
+    await file.save();
+
+    res.status(200).json({ success: true, message: 'File assigned to users.', data: file });
+  } catch (error) {
+    console.error('Error in assignFileToUsers:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc    Get file by ID
 // @route   GET /api/files/:id
 // @access  Private (requires file_management read permission)
@@ -299,12 +324,14 @@ exports.getFile = async (req, res) => {
       });
     }
 
-    // Check if user is the owner of the file or admin
-    // Permission middleware already checked for file_management read permission
+
+    // Check if user is the owner, admin, or assigned to the file
     const userRole = req.userRole || req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+    const isUploader = file.uploadedBy.toString() === req.user.id;
+    const isAssigned = Array.isArray(file.assignedTo) && file.assignedTo.map(id => id.toString()).includes(req.user.id);
 
-    if (file.uploadedBy.toString() !== req.user.id && !isAdmin) {
+    if (!isUploader && !isAdmin && !isAssigned) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this file'

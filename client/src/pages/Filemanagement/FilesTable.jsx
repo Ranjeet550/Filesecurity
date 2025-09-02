@@ -18,7 +18,8 @@ import {
   Tag,
   Row,
   Col,
-  theme
+  theme,
+  Select
 } from 'antd';
 import {
   FileOutlined,
@@ -42,9 +43,12 @@ import {
   ClearOutlined
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { deleteFile, getFileById, downloadFile } from '../../api/fileService';
+import { deleteFile, getFileById, downloadFile, assignFileToUsers } from '../../api/fileService';
+import { getUsers } from '../../api/userService';
+
 import AuthContext from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
+
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -67,6 +71,58 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const { token } = useToken();
+
+  // Assign modal state
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignForm] = Form.useForm();
+  const [assignFile, setAssignFile] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [assignError, setAssignError] = useState(null);
+
+  // Fetch all users for assignment (admin only)
+  const fetchAllUsers = async () => {
+    try {
+      const usersResponse = await getUsers();
+      // If response has .data, use it, else fallback to array or empty
+      setAllUsers(Array.isArray(usersResponse?.data) ? usersResponse.data : (Array.isArray(usersResponse) ? usersResponse : []));
+    } catch (error) {
+      setAllUsers([]);
+    }
+  };
+
+  // Open assign modal
+  const handleOpenAssign = async (file) => {
+    setAssignFile(file);
+    setAssignError(null);
+    setAssignModalVisible(true);
+    assignForm.resetFields();
+    await fetchAllUsers();
+  };
+
+  // Assign file to users
+  const handleAssign = async (values) => {
+    setAssignLoading(true);
+    setAssignError(null);
+    try {
+      await assignFileToUsers(assignFile.id || assignFile._id, values.userIds);
+      setAssignModalVisible(false);
+      message.success('File assigned to users');
+      fetchFiles();
+    } catch (error) {
+      setAssignError(error.message || 'Failed to assign file');
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  // Close assign modal
+  const closeAssignModal = () => {
+    setAssignModalVisible(false);
+    setAssignFile(null);
+    setAssignError(null);
+    assignForm.resetFields();
+  };
 
   // Table styles
   const tableStyles = {
@@ -330,8 +386,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         style: tableStyles.bodyCell,
       }),
     },
-    // Conditionally add "Uploaded By" column for admin users
-    ...(isAdmin ? [{
+    // Always show "Uploaded By" column
+    {
       title: 'Uploaded By',
       dataIndex: 'uploadedBy',
       key: 'uploadedBy',
@@ -351,14 +407,17 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       onCell: () => ({
         style: tableStyles.bodyCell,
       }),
-    }] : []),
+    },
     {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => {
         // Check if user has delete permission
         const canDelete = hasPermission(user, 'file_management', 'delete');
+        const canAssign = isAdmin;
 
+        // Only show Share button if user is not a viewer
+        const isViewer = user?.role?.name === 'viewer';
         return (
           <Space size="small" wrap>
             <Button
@@ -371,24 +430,36 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
             >
               <span className="action-text">Download</span>
             </Button>
-            <Button
-              type="default"
-              icon={<ShareAltOutlined />}
-              size="small"
-              onClick={async () => {
-                try {
-                  const fileId = record.id || record._id;
-                  const link = `${window.location.origin}/download/${fileId}`;
-                  navigator.clipboard.writeText(link);
-                  message.success('Download link copied to clipboard');
-                } catch (error) {
-                  console.error('Error sharing file:', error);
-                  message.error('Failed to share file');
-                }
-              }}
-            >
-              <span className="action-text">Share</span>
-            </Button>
+            {!isViewer && (
+              <Button
+                type="default"
+                icon={<ShareAltOutlined />}
+                size="small"
+                onClick={async () => {
+                  try {
+                    const fileId = record.id || record._id;
+                    const link = `${window.location.origin}/download/${fileId}`;
+                    navigator.clipboard.writeText(link);
+                    message.success('Download link copied to clipboard');
+                  } catch (error) {
+                    console.error('Error sharing file:', error);
+                    message.error('Failed to share file');
+                  }
+                }}
+              >
+                <span className="action-text">Share</span>
+              </Button>
+            )}
+            {canAssign && (
+              <Button
+                type="dashed"
+                icon={<UserOutlined />}
+                size="small"
+                onClick={() => handleOpenAssign(record)}
+              >
+                Assign
+              </Button>
+            )}
             {canDelete && (
               <Popconfirm
                 title="Are you sure you want to delete this file?"
@@ -404,7 +475,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           </Space>
         );
       },
-      width: '200px',
+      width: '250px',
       onHeaderCell: () => ({
         style: tableStyles.headerCell,
       }),
@@ -550,6 +621,89 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           })}
         />
     
+
+      {/* Assign Modal (Admin Only) */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+            <UserOutlined style={{ marginRight: '6px', color: '#00BF96', fontSize: '16px' }} />
+            Assign File to Users
+          </div>
+        }
+        open={assignModalVisible}
+        onCancel={closeAssignModal}
+        footer={null}
+        width={400}
+        style={{ top: 20 }}
+        bodyStyle={{ padding: '24px' }}
+      >
+        <Form
+          form={assignForm}
+          name="assign"
+          onFinish={handleAssign}
+          layout="vertical"
+          size="small"
+        >
+          <Form.Item
+            name="userIds"
+            label={<span style={{ fontSize: '13px', fontWeight: '500' }}>Select Users</span>}
+            rules={[{ required: true, message: 'Please select at least one user!' }]}
+            style={{ marginBottom: '16px' }}
+          >
+            <Select
+              mode="multiple"
+              placeholder="Select users to assign"
+              style={{ width: '100%' }}
+              loading={allUsers.length === 0}
+              optionFilterProp="children"
+              showSearch
+              filterOption={(input, option) =>
+                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+            >
+              {allUsers
+                .filter(u => u._id !== assignFile?.uploadedBy?._id && u._id !== assignFile?.uploadedBy)
+                .map(user => (
+                  <Select.Option key={user._id} value={user._id}>
+                    {user.name} ({user.email})
+                  </Select.Option>
+                ))}
+            </Select>
+          </Form.Item>
+          {assignError && (
+            <Alert
+              message="Assign Error"
+              description={assignError}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setAssignError(null)}
+              style={{ marginBottom: 16, fontSize: '13px' }}
+              size="small"
+            />
+          )}
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Row gutter={[16, 16]} justify="end">
+              <Col>
+                <Button onClick={closeAssignModal} size="small">
+                  Cancel
+                </Button>
+              </Col>
+              <Col>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={assignLoading}
+                  className="gradient-button"
+                  size="small"
+                >
+                  Assign
+                </Button>
+              </Col>
+            </Row>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Download Modal */}
       <Modal
