@@ -1,3 +1,24 @@
+// Accept a file (set status to 'Accepted')
+// @route   POST /api/files/:id/accept
+// @access  Private (assigned user only)
+exports.acceptFile = async (req, res) => {
+  try {
+    const file = await require('../models/File').findById(req.params.id);
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+    // Only assigned users can accept
+    if (!Array.isArray(file.assignedTo) || !file.assignedTo.map(id => id.toString()).includes(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to accept this file' });
+    }
+    file.status = 'Accepted';
+    await file.save();
+    res.status(200).json({ success: true, message: 'File accepted', data: { status: file.status } });
+  } catch (error) {
+    console.error('Error in acceptFile:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 const File = require('../models/File');
 const fs = require('fs');
 const path = require('path');
@@ -189,7 +210,8 @@ exports.uploadFile = async (req, res) => {
       mimetype: mimeType,
       password: password,
       uploadedBy: req.user.id,
-      uploadLocation: userLocation
+      uploadLocation: userLocation,
+      status: 'Pending'
     });
 
     // Log file upload activity
@@ -237,7 +259,7 @@ exports.uploadFile = async (req, res) => {
 exports.getFiles = async (req, res) => {
   try {
     let query = {};
-    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy';
+  let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy status';
     // Always populate uploadedBy with name/email for all users
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
@@ -346,7 +368,8 @@ exports.getFile = async (req, res) => {
         size: file.size,
         uploadedAt: file.createdAt,
         downloads: file.downloads.length,
-        uploadLocation: file.uploadLocation
+        uploadLocation: file.uploadLocation,
+        status: file.status
       }
     });
   } catch (error) {

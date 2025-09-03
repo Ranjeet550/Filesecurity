@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const FileSchema = new mongoose.Schema({
+  status: {
+    type: String,
+    enum: ['Pending', 'Accepted'],
+    default: 'Pending'
+  },
   filename: {
     type: String,
     required: [true, 'Please add a filename'],

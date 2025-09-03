@@ -1,3 +1,4 @@
+import { acceptFile } from '../../api/fileService';
 import React, { useState, useEffect } from 'react';
 import {
   Typography,
@@ -261,7 +262,7 @@ const FileDownload = () => {
   }
 
   return (
-    <div style={{
+  <div style={{
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
@@ -309,6 +310,18 @@ const FileDownload = () => {
           Secure File Download
         </Title>
 
+        {/* Accept button for assigned users if not already accepted */}
+        {file && file.status !== 'Accepted' && (
+          <Button
+            type="primary"
+            onClick={handleAccept}
+            loading={accepting}
+            style={{ marginBottom: 16, width: '100%' }}
+            icon={<CheckCircleOutlined />}
+          >
+            Accept File
+          </Button>
+        )}
         <Card
           style={{
             marginBottom: 20,

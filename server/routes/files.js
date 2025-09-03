@@ -6,8 +6,10 @@ const {
   downloadFile,
   deleteFile,
   getFilePassword,
-  assignFileToUsers
+  assignFileToUsers,
+  acceptFile
 } = require('../controllers/files');
+
 const { protect, optionalAuth } = require('../middleware/auth');
 const { trackLocation } = require('../middleware/location');
 const { checkPermission } = require('../middleware/permission');
@@ -47,5 +49,8 @@ router.delete('/:id', protect, checkPermission('file_management', 'delete'), del
 
 // Assign file to users (admin only)
 router.post('/:id/assign', protect, checkPermission('file_management', 'update'), assignFileToUsers);
+
+// Accept file (assigned user only)
+router.post('/:id/accept', protect, acceptFile);
 
 module.exports = router;

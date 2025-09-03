@@ -1,3 +1,14 @@
+// Accept file (viewer marks as accepted)
+export const acceptFile = async (fileId) => {
+  try {
+    const api = authAxios();
+    const response = await api.post(`${FILES_API_URL}/${fileId}/accept`);
+    return response.data;
+  } catch (error) {
+    console.error('Error accepting file:', error);
+    throw error.response?.data || error.message;
+  }
+};
 // Assign file to users (admin only)
 export const assignFileToUsers = async (fileId, userIds) => {
   try {

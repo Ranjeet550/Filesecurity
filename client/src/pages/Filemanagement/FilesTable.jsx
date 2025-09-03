@@ -1,3 +1,4 @@
+import { acceptFile } from '../../api/fileService';
 import { useState, useContext, useMemo } from 'react';
 import {
   Typography,
@@ -67,6 +68,22 @@ const getFileIcon = (mimetype) => {
 };
 
 const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
+  // Accept all pending files for viewer
+  const [accepting, setAccepting] = useState(false);
+  const handleAcceptAll = async () => {
+    setAccepting(true);
+    try {
+      // Accept all files assigned to this user and still pending
+      const pendingFiles = files.filter(f => f.status !== 'Accepted' && Array.isArray(f.assignedTo) && f.assignedTo.includes(user._id));
+      await Promise.all(pendingFiles.map(f => acceptFile(f._id || f.id)));
+      message.success('All files accepted!');
+      fetchFiles();
+    } catch (err) {
+      message.error('Failed to accept all files');
+    } finally {
+      setAccepting(false);
+    }
+  };
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const { message } = App.useApp();
@@ -298,6 +315,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
   };
 
   const columns = [
+    // ...existing code...
+   
     {
       title: 'SN.',
       key: 'serialNumber',
@@ -346,7 +365,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       }),
     },
     {
-      title: 'Uploaded',
+      title: 'Send Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (date) => (
@@ -408,6 +427,23 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         style: tableStyles.bodyCell,
       }),
     },
+     {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => (
+        <Tag color={status === 'Accepted' ? 'green' : 'orange'} style={{ fontWeight: 500 }}>
+          {status || 'Pending'}
+        </Tag>
+      ),
+      width: '110px',
+      onHeaderCell: () => ({
+        style: tableStyles.headerCell,
+      }),
+      onCell: () => ({
+        style: tableStyles.bodyCell,
+      }),
+    },
     {
       title: 'Actions',
       key: 'actions',
@@ -459,6 +495,31 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
               >
                 Assign
               </Button>
+            )}
+            {isViewer && record.status !== 'Accepted' && (
+              <>
+                {console.log('DEBUG Accept btn:', { userId: user._id, assignedTo: record.assignedTo })}
+                <Button
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  size="small"
+                  loading={accepting}
+                  onClick={async () => {
+                    setAccepting(true);
+                    try {
+                      await acceptFile(record._id || record.id);
+                      message.success('File accepted!');
+                      fetchFiles();
+                    } catch (err) {
+                      message.error('Failed to accept file');
+                    } finally {
+                      setAccepting(false);
+                    }
+                  }}
+                >
+                  Accept
+                </Button>
+              </>
             )}
             {canDelete && (
               <Popconfirm
@@ -532,6 +593,18 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       
       
         <div style={responsiveStyles.header}>
+          {/* Accept All button for viewer users */}
+          {user?.role?.name === 'viewer' && files.some(f => f.status !== 'Accepted' && Array.isArray(f.assignedTo) && f.assignedTo.includes(user._id)) && (
+            <Button
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              loading={accepting}
+              style={{ marginBottom: 16, marginRight: 16 }}
+              onClick={handleAcceptAll}
+            >
+              Accept All Pending Files
+            </Button>
+          )}
           <div style={responsiveStyles.title}>
             {activeView === 'all-files' ? (
               <AppstoreOutlined style={{ fontSize: '18px', color: '#00BF96' }} />
