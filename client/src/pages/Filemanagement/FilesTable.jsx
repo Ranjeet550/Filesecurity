@@ -772,7 +772,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
               optionFilterProp="children"
               showSearch
               filterOption={(input, option) =>
-                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                String(option.children).toLowerCase().includes(input.toLowerCase())
               }
             >
               {allUsers
