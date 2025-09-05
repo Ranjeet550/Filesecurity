@@ -169,6 +169,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -176,28 +177,33 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
 
   // Filter files based on search term
   const filteredFiles = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return files;
-    }
+    // Apply search first
+    const listBySearch = (() => {
+      if (!searchTerm.trim()) return files;
+      const searchLower = searchTerm.toLowerCase();
+      return files.filter(file => {
+        const fileName = (file.originalName || '').toLowerCase();
+        const uploadedByName = isAdmin && file.uploadedBy?.name
+          ? file.uploadedBy.name.toLowerCase()
+          : '';
+        const fileExtension = fileName.split('.').pop() || '';
+        return (
+          fileName.includes(searchLower) ||
+          uploadedByName.includes(searchLower) ||
+          fileExtension.includes(searchLower)
+        );
+      });
+    })();
 
-    const searchLower = searchTerm.toLowerCase();
-    return files.filter(file => {
-      // Search in file name
-      const fileName = (file.originalName || '').toLowerCase();
-
-      // Search in uploaded by user name (for admin view)
-      const uploadedByName = isAdmin && file.uploadedBy?.name
-        ? file.uploadedBy.name.toLowerCase()
-        : '';
-
-      // Search in file extension/type
-      const fileExtension = fileName.split('.').pop() || '';
-
-      return fileName.includes(searchLower) ||
-             uploadedByName.includes(searchLower) ||
-             fileExtension.includes(searchLower);
+    // Then apply status filter
+    const listByStatus = listBySearch.filter(file => {
+      if (statusFilter === 'all') return true;
+      const status = (file.status || 'Pending');
+      return status.toLowerCase() === statusFilter;
     });
-  }, [files, searchTerm, isAdmin]);
+
+    return listByStatus;
+  }, [files, searchTerm, isAdmin, statusFilter]);
 
   // Download modal state
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
@@ -654,6 +660,20 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                   fontSize: '14px'
                 }}
               />
+            </Col>
+            <Col xs={24} sm={12} md={12} lg={8} xl={6}>
+              <Select
+                value={statusFilter}
+                onChange={(val) => {
+                  setStatusFilter(val);
+                  setCurrentPage(1);
+                }}
+                style={{ width: '50%' }}
+              >
+                <Select.Option value="all">All Status</Select.Option>
+                <Select.Option value="pending">Pending</Select.Option>
+                <Select.Option value="accepted">Accepted</Select.Option>
+              </Select>
             </Col>
           </Row>
         </div>
