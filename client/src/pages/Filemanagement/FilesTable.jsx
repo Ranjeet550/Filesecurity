@@ -49,6 +49,7 @@ import { getUsers } from '../../api/userService';
 
 import AuthContext from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
+import { exportFilesToExcel } from '../../utils/exportToExcel';
 
 
 const { Text } = Typography;
@@ -622,14 +623,18 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
             </Typography.Text>
           </div>
           
-          {hasPermission(user, 'file_management', 'create') && (
-            <Link to="/upload">
-              <Button style={responsiveStyles.uploadButton}>
-                <UploadOutlined />
-                <span style={{ marginLeft: '8px' }}>Upload New File</span>
-              </Button>
-            </Link>
-          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {hasPermission(user, 'file_management', 'create') && (
+              <Link to="/upload">
+                <Button style={responsiveStyles.uploadButton}>
+                  <UploadOutlined />
+                  <span style={{ marginLeft: '8px' }}>Upload New File</span>
+                </Button>
+              </Link>
+            )}
+
+            
+          </div>
         </div>
 
         <div style={responsiveStyles.searchContainer}>
@@ -674,6 +679,19 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 <Select.Option value="pending">Pending</Select.Option>
                 <Select.Option value="accepted">Accepted</Select.Option>
               </Select>
+            </Col>
+            <Col xs={24} sm={12} md={12} lg={8} xl={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                onClick={() => {
+                  exportFilesToExcel(filteredFiles, {
+                    filename: 'files_report.xlsx',
+                  });
+                }}
+              >
+                Export to Excel
+              </Button>
             </Col>
           </Row>
         </div>
