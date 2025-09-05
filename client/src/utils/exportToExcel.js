@@ -11,7 +11,7 @@ import * as XLSX from 'xlsx';
  */
 export function exportFilesToExcel(
   data,
-  { filename = 'files_report.xlsx', columns, mapRow } = {}
+  { filename = 'files_report.xlsx', columns, mapRow, userMap, isAdmin } = {}
 ) {
   // Ensure non-empty data, but create a simple sheet even if empty
   if (!Array.isArray(data) || data.length === 0) {
@@ -22,25 +22,41 @@ export function exportFilesToExcel(
     return;
   }
 
+  // Try to get userMap from data if not provided (for backward compatibility)
+  let effectiveUserMap = userMap;
+  if (!effectiveUserMap && data.length > 0 && data[0]._userMap) {
+    effectiveUserMap = data[0]._userMap;
+  }
+
+
   const defaultMapRow = (row) => {
     const downloadsCount = Array.isArray(row.downloads)
       ? row.downloads.length
       : row.downloadCount || 0;
-    const assignedToCount = Array.isArray(row.assignedTo)
-      ? row.assignedTo.length
-      : 0;
+    // Assigned To names
+    let assignedToNames = '';
+    if (Array.isArray(row.assignedTo) && row.assignedTo.length > 0) {
+      if (effectiveUserMap) {
+        assignedToNames = row.assignedTo.map(uid => effectiveUserMap[uid]?.name || uid).join(', ');
+      } else {
+        assignedToNames = row.assignedTo.join(', ');
+      }
+    }
 
-    return {
+    const base = {
       'File Name': row.originalName || '',
       'Size (bytes)': row.size ?? '',
       'Send Date': row.createdAt ? new Date(row.createdAt).toLocaleString() : '',
       'Status': row.status || 'Pending',
       'Downloads': downloadsCount,
-      'Type': row.mimetype || '',
+      // 'Type': row.mimetype || '', // Removed as requested
       'Uploaded By': row.uploadedBy?.name || row.uploadedBy?.email || '',
-      'Assigned To (count)': assignedToCount,
-      'File ID': row._id || row.id || '',
     };
+    // Only add Assigned To for admin
+    if (isAdmin) {
+      base['Assigned To'] = assignedToNames;
+    }
+    return base;
   };
 
   const mapped = data.map(mapRow || defaultMapRow);

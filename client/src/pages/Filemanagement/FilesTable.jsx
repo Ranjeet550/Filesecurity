@@ -1,5 +1,5 @@
 import { acceptFile } from '../../api/fileService';
-import { useState, useContext, useMemo } from 'react';
+import { useState, useContext, useMemo, useEffect } from 'react';
 import {
   Typography,
   Table,
@@ -96,16 +96,23 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
   const [assignForm] = Form.useForm();
   const [assignFile, setAssignFile] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
+  // For mapping userId to user object (for assignedTo display)
+  const [userMap, setUserMap] = useState({});
   const [assignError, setAssignError] = useState(null);
 
-  // Fetch all users for assignment (admin only)
+  // Fetch all users for assignment (admin only) and for assignedTo display
   const fetchAllUsers = async () => {
     try {
       const usersResponse = await getUsers();
-      // If response has .data, use it, else fallback to array or empty
-      setAllUsers(Array.isArray(usersResponse?.data) ? usersResponse.data : (Array.isArray(usersResponse) ? usersResponse : []));
+      const usersArr = Array.isArray(usersResponse?.data) ? usersResponse.data : (Array.isArray(usersResponse) ? usersResponse : []);
+      setAllUsers(usersArr);
+      // Build userId -> user object map
+      const map = {};
+      usersArr.forEach(u => { if(u && u._id) map[u._id] = u; });
+      setUserMap(map);
     } catch (error) {
       setAllUsers([]);
+      setUserMap({});
     }
   };
 
@@ -115,8 +122,14 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
     setAssignError(null);
     setAssignModalVisible(true);
     assignForm.resetFields();
+    // Always fetch users for modal, but also fetch on mount for assignedTo column
     await fetchAllUsers();
   };
+  // Fetch all users on mount for assignedTo column
+  useEffect(() => {
+    fetchAllUsers();
+    // eslint-disable-next-line
+  }, []);
 
   // Assign file to users
   const handleAssign = async (values) => {
@@ -321,23 +334,17 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   };
 
+  const isViewer = user?.role?.name === 'viewer';
   const columns = [
     // ...existing code...
-   
     {
       title: 'SN.',
       key: 'serialNumber',
-      render: (_, __, index) => {
-        return (currentPage - 1) * pageSize + index + 1;
-      },
+      render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
       width: '80px',
       fixed: 'left',
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
     {
       title: 'File Name',
@@ -350,12 +357,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         </Space>
       ),
       ellipsis: true,
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
     {
       title: 'Size',
@@ -364,12 +367,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       render: (size) => formatBytes(size),
       width: '100px',
       responsive: ['sm'],
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
     {
       title: 'Send Date',
@@ -383,12 +382,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       ),
       width: '120px',
       responsive: ['md'],
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
     {
       title: 'Downloads',
@@ -405,14 +400,9 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       },
       width: '100px',
       responsive: ['md'],
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
-    // Always show "Uploaded By" column
     {
       title: 'Uploaded By',
       dataIndex: 'uploadedBy',
@@ -420,21 +410,42 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       render: (uploadedBy) => (
         <Space>
           <UserOutlined style={{ color: '#722ed1' }} />
-          <Tag color="purple">
-            {uploadedBy?.name || 'Unknown User'}
-          </Tag>
+          <Tag color="purple">{uploadedBy?.name || 'Unknown User'}</Tag>
         </Space>
       ),
       width: '150px',
       responsive: ['lg'],
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
-     {
+    // Conditionally show Assigned To column
+    ...(!isViewer ? [
+      {
+        title: 'Assigned To',
+        dataIndex: 'assignedTo',
+        key: 'assignedTo',
+        render: (assignedTo) => {
+          if (!assignedTo || !Array.isArray(assignedTo) || assignedTo.length === 0) return <Tag color="default">None</Tag>;
+          return (
+            <Space wrap>
+              {assignedTo.map(uid => {
+                const user = userMap[uid];
+                return (
+                  <Tag key={uid} color="blue" style={{ fontWeight: 500 }}>
+                    {user?.name || uid}
+                  </Tag>
+                );
+              })}
+            </Space>
+          );
+        },
+        width: '180px',
+        responsive: ['md'],
+        onHeaderCell: () => ({ style: tableStyles.headerCell }),
+        onCell: () => ({ style: tableStyles.bodyCell }),
+      },
+    ] : []),
+    {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
@@ -444,21 +455,15 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         </Tag>
       ),
       width: '110px',
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => {
-        // Check if user has delete permission
         const canDelete = hasPermission(user, 'file_management', 'delete');
         const canAssign = isAdmin;
-
         // Only show Share button if user is not a viewer
         const isViewer = user?.role?.name === 'viewer';
         return (
@@ -544,12 +549,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         );
       },
       width: '250px',
-      onHeaderCell: () => ({
-        style: tableStyles.headerCell,
-      }),
-      onCell: () => ({
-        style: tableStyles.bodyCell,
-      }),
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
     },
   ];
 
@@ -687,6 +688,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 onClick={() => {
                   exportFilesToExcel(filteredFiles, {
                     filename: 'files_report.xlsx',
+                    userMap,
+                    isAdmin
                   });
                 }}
               >
