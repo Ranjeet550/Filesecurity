@@ -136,9 +136,11 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
     setAssignLoading(true);
     setAssignError(null);
     try {
-      await assignFileToUsers(assignFile.id || assignFile._id, values.userIds);
+      // Only assign a single user
+      const userId = Array.isArray(values.userIds) ? values.userIds[0] : values.userIds;
+      await assignFileToUsers(assignFile.id || assignFile._id, [userId]);
       setAssignModalVisible(false);
-      message.success('File assigned to users');
+      message.success('File assigned to user');
       fetchFiles();
     } catch (error) {
       setAssignError(error.message || 'Failed to assign file');
@@ -463,7 +465,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       key: 'actions',
       render: (_, record) => {
         const canDelete = hasPermission(user, 'file_management', 'delete');
-        const canAssign = isAdmin;
+  const canAssign = isAdmin;
         // Only show Share button if user is not a viewer
         const isViewer = user?.role?.name === 'viewer';
         return (
@@ -504,6 +506,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 icon={<UserOutlined />}
                 size="small"
                 onClick={() => handleOpenAssign(record)}
+                disabled={Array.isArray(record.assignedTo) && record.assignedTo.length > 0}
               >
                 Assign
               </Button>
@@ -760,25 +763,28 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         >
           <Form.Item
             name="userIds"
-            label={<span style={{ fontSize: '13px', fontWeight: '500' }}>Select Users</span>}
-            rules={[{ required: true, message: 'Please select at least one user!' }]}
+            label={<span style={{ fontSize: '13px', fontWeight: '500' }}>Select User</span>}
+            rules={[{ required: true, message: 'Please select a user!' }]}
             style={{ marginBottom: '16px' }}
           >
             <Select
-              mode="multiple"
-              placeholder="Select users to assign"
+              placeholder="Select user to assign"
               style={{ width: '100%' }}
               loading={allUsers.length === 0}
               optionFilterProp="children"
               showSearch
               filterOption={(input, option) =>
-                String(option.children).toLowerCase().includes(input.toLowerCase())
+                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
             >
               {allUsers
                 .filter(u => u._id !== assignFile?.uploadedBy?._id && u._id !== assignFile?.uploadedBy)
                 .map(user => (
-                  <Select.Option key={user._id} value={user._id}>
+                  <Select.Option
+                    key={user._id}
+                    value={user._id}
+                    disabled={Array.isArray(assignFile?.assignedTo) && assignFile.assignedTo.includes(user._id)}
+                  >
                     {user.name} ({user.email})
                   </Select.Option>
                 ))}
