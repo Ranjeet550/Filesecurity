@@ -13,6 +13,7 @@ import FileDownload from './pages/Filemanagement/FileDownload';
 import UserManagement from './pages/Usermanagement/Alluser';
 import RoleManagement from './pages/Usermanagement/RoleManagement';
 import PermissionManagement from './pages/Usermanagement/PermissionManagement';
+import ModuleManagement from './pages/Usermanagement/ModuleManagement';
 import NotFound from './components/NotFound';
 import ForgotPassword from './pages/UserAuth/ForgotPassword';
 import OTPVerification from './pages/UserAuth/OTPVerification';
@@ -70,6 +71,11 @@ function App() {
               <Route path="/permissions" element={
                 <AdminRoute>
                   <PermissionManagement />
+                </AdminRoute>
+              } />
+              <Route path="/modules" element={
+                <AdminRoute>
+                  <ModuleManagement />
                 </AdminRoute>
               } />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -364,7 +364,8 @@ exports.getFile = async (req, res) => {
       success: true,
       data: {
         id: file._id,
-        filename: file.originalName,
+        filename: file.filename,
+        originalName: file.originalName,
         size: file.size,
         uploadedAt: file.createdAt,
         downloads: file.downloads.length,
@@ -555,7 +556,8 @@ exports.downloadFile = async (req, res) => {
         console.log('Serving password-protected PDF directly');
 
         // Set headers for PDF download with original filename
-        res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+        const pdfFilename = file.originalName;
+        res.setHeader('Content-Disposition', `attachment; filename="${pdfFilename}"`);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Cache-Control', 'no-cache');
@@ -563,6 +565,8 @@ exports.downloadFile = async (req, res) => {
 
         // Log headers for debugging
         console.log('PDF Response headers:', res.getHeaders());
+        console.log('PDF filename being sent:', pdfFilename);
+        console.log('PDF originalName from DB:', file.originalName);
 
         // Send the password-protected PDF directly
         fs.createReadStream(absolutePath).pipe(res);
@@ -571,7 +575,8 @@ exports.downloadFile = async (req, res) => {
         console.log('Serving password-protected Excel file directly');
 
         // Set headers for Excel download with original filename
-        res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+        const excelFilename = file.originalName;
+        res.setHeader('Content-Disposition', `attachment; filename="${excelFilename}"`);
         res.setHeader('Content-Type', mimeType);
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Cache-Control', 'no-cache');
@@ -579,6 +584,8 @@ exports.downloadFile = async (req, res) => {
 
         // Log headers for debugging
         console.log('Excel Response headers:', res.getHeaders());
+        console.log('Excel filename being sent:', excelFilename);
+        console.log('Excel originalName from DB:', file.originalName);
 
         // Send the password-protected Excel file directly
         fs.createReadStream(absolutePath).pipe(res);
@@ -593,11 +600,11 @@ exports.downloadFile = async (req, res) => {
         );
         console.log('Encrypted file created at:', encryptedFilePath);
 
-        // Set a new filename for the encrypted file
-        const encryptedFileName = `${path.basename(file.originalName, path.extname(file.originalName))}_protected.html`;
+        // Always use the original filename for download
+        const otherFilename = file.originalName;
 
         // Set headers to force download and prevent navigation
-        res.setHeader('Content-Disposition', `attachment; filename="${encryptedFileName}"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${otherFilename}"`);
         res.setHeader('Content-Type', 'text/html');
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Cache-Control', 'no-cache');
@@ -605,6 +612,8 @@ exports.downloadFile = async (req, res) => {
 
         // Log all headers for debugging
         console.log('Response headers:', res.getHeaders());
+        console.log('Other file filename being sent:', otherFilename);
+        console.log('Other file originalName from DB:', file.originalName);
 
         // Send the encrypted file
         fs.createReadStream(encryptedFilePath).pipe(res);

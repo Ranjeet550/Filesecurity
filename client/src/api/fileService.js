@@ -212,7 +212,7 @@ export const getFileById = async (fileId) => {
 };
 
 // Download file
-export const downloadFile = async (fileId, password) => {
+export const downloadFile = async (fileId, password, originalName = null) => {
   try {
     const location = await getLocationData();
     const token = getAuthToken();
@@ -254,10 +254,57 @@ export const downloadFile = async (fileId, password) => {
     let filename = 'download';
 
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-      if (filenameMatch && filenameMatch.length === 2) {
-        filename = filenameMatch[1];
+      console.log('Content-Disposition header:', contentDisposition);
+
+      // Try multiple regex patterns to extract filename
+      const patterns = [
+        /filename\*?=['"]?([^'";\n]+)['"]?/i,
+        /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
+        /filename="([^"]*)"/,
+        /filename=([^;\n]*)/
+      ];
+
+      for (const pattern of patterns) {
+        const match = contentDisposition.match(pattern);
+        if (match && match[1]) {
+          filename = match[1].replace(/['"]/g, '').trim();
+          // Decode URI component if it's encoded
+          try {
+            filename = decodeURIComponent(filename);
+          } catch (e) {
+            // If decoding fails, use as is
+          }
+          console.log('Extracted filename:', filename);
+          break;
+        }
       }
+    }
+
+    // Final fallback: if filename is still 'download', try to get it from URL or use a default
+    if (filename === 'download') {
+      try {
+        const url = new URL(response.config.url);
+        const pathname = url.pathname;
+        const urlFilename = pathname.substring(pathname.lastIndexOf('/') + 1);
+        if (urlFilename && urlFilename !== 'download') {
+          filename = urlFilename;
+          console.log('Fallback filename from URL:', filename);
+        }
+      } catch (e) {
+        console.log('Could not extract filename from URL');
+      }
+    }
+
+    // Ultimate fallback: if filename is still 'download', use the originalName from database
+    if (filename === 'download' && originalName) {
+      filename = originalName;
+      console.log('Using original filename from database:', filename);
+    } else if (filename === 'download') {
+      // Final fallback: use a generic name with extension
+      const contentType = response.headers['content-type'] || 'application/octet-stream';
+      const extension = contentType.split('/')[1] || 'bin';
+      filename = `download.${extension}`;
+      console.log('Using generic filename with extension:', filename);
     }
 
     // Set download attribute to force download instead of navigation

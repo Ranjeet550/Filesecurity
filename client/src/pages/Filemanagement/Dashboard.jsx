@@ -34,7 +34,8 @@ const Dashboard = () => {
     totalFiles: 0,
     totalDownloads: 0,
     recentUploads: 0,
-    storageUsed: 0
+    storageUsed: 0,
+    userDownloadStats: []
     // No storage limit - unlimited storage
   });
   const [isAdmin, setIsAdmin] = useState(false);
@@ -69,11 +70,38 @@ const Dashboard = () => {
       ).length;
       const storageUsed = response.data.reduce((acc, file) => acc + (file.size || 0), 0);
 
+      // Calculate current user's download statistics
+      const currentUserId = user?._id;
+      let currentUserStats = null;
+
+      if (currentUserId) {
+        const userFiles = response.data.filter(file =>
+          (file.uploadedBy?._id || file.uploadedBy) === currentUserId
+        );
+
+        if (userFiles.length > 0) {
+          const totalDownloads = userFiles.reduce((acc, file) => {
+            const downloadCount = file.downloads && Array.isArray(file.downloads) ? file.downloads.length : 0;
+            return acc + downloadCount;
+          }, 0);
+
+          currentUserStats = {
+            userId: currentUserId,
+            userName: user?.name || 'You',
+            downloadCount: totalDownloads,
+            fileCount: userFiles.length
+          };
+        }
+      }
+
+      const userDownloadStats = currentUserStats ? [currentUserStats] : [];
+
       setStats({
         totalFiles,
         totalDownloads,
         recentUploads,
-        storageUsed
+        storageUsed,
+        userDownloadStats
         // No storage limit - unlimited storage
       });
 

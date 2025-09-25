@@ -110,7 +110,7 @@ const FileDownload = () => {
       }, 300);
 
       // Use a try-catch to handle the download
-      const result = await downloadFile(fileId, values.password);
+      const result = await downloadFile(fileId, values.password, file.originalName);
       console.log('Download completed successfully:', result);
 
       clearInterval(progressInterval);

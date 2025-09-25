@@ -9,7 +9,8 @@ import {
   AppstoreOutlined,
   SafetyOutlined,
   KeyOutlined,
-  UserOutlined
+  UserOutlined,
+  CodeOutlined
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
@@ -52,7 +53,7 @@ const Sidebar = ({ children }) => {
     }
     
     // User Management submenu (admin only)
-    if (pathname === '/users' || pathname === '/roles' || pathname === '/permissions') {
+    if (pathname === '/users' || pathname === '/roles' || pathname === '/permissions' || pathname === '/modules') {
       openKeys.push('user-management');
     }
     
@@ -220,6 +221,15 @@ const Sidebar = ({ children }) => {
                       label: (
                         <Link to="/permissions" className="sidebar-submenu-link">
                           Permissions
+                        </Link>
+                      )
+                    },
+                    {
+                      key: '/modules',
+                      icon: <CodeOutlined style={{ fontSize: '14px', color: '#13c2c2' }} />,
+                      label: (
+                        <Link to="/modules" className="sidebar-submenu-link">
+                          Modules
                         </Link>
                       )
                     }

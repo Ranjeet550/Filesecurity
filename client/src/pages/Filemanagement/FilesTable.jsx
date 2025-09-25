@@ -290,8 +290,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         });
       }, 300);
 
-      // Perform the download
-      const result = await downloadFile(selectedFile.id || selectedFile._id, values.password);
+      // Perform the download with original filename
+      const result = await downloadFile(selectedFile.id || selectedFile._id, values.password, selectedFile.originalName);
       console.log('Download completed successfully:', result);
 
       clearInterval(progressInterval);
@@ -915,7 +915,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                           </div>
                           <div>
                             <Text strong style={{ fontSize: 14, display: 'block' }}>
-                              {selectedFile.filename || selectedFile.originalName}
+                              {selectedFile.originalName || selectedFile.filename}
                             </Text>
                             <Text type="secondary" style={{ fontSize: 12 }}>
                               Size: {formatBytes(selectedFile.size)}

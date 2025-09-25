@@ -135,7 +135,24 @@ const RoleManagement = () => {
       fetchRoles();
     } catch (error) {
       console.error('Form submission error:', error);
-      message.error(error.message || 'Operation failed');
+
+      // Handle form validation errors
+      if (error.errorFields && error.errorFields.length > 0) {
+        const firstError = error.errorFields[0];
+        const fieldName = firstError.name[0];
+        const errorMessage = firstError.errors[0];
+
+        // Provide more user-friendly error messages
+        let friendlyMessage = errorMessage;
+        if (fieldName === 'name' && errorMessage.includes('pattern')) {
+          friendlyMessage = 'Role name must contain only letters and underscores (e.g., Manager, content_editor)';
+        }
+
+        message.error(friendlyMessage);
+      } else {
+        // Handle API errors
+        message.error(error.message || 'Operation failed');
+      }
     }
   };
 
@@ -428,11 +445,16 @@ const RoleManagement = () => {
                   label="Role Name"
                   rules={[
                     { required: true, message: 'Please enter role name' },
-                    { pattern: /^[a-z_]+$/, message: 'Role name must be lowercase with underscores only' }
+                    {
+                      pattern: /^[a-zA-Z_]+$/,
+                      message: 'Role name must contain only letters and underscores (e.g., Manager, content_editor)'
+                    },
+                    { min: 2, message: 'Role name must be at least 2 characters long' },
+                    { max: 50, message: 'Role name cannot exceed 50 characters' }
                   ]}
                 >
-                  <Input 
-                    placeholder="e.g., manager, editor" 
+                  <Input
+                    placeholder="e.g., Manager, content_editor"
                     size={isMobile ? 'middle' : 'large'}
                   />
                 </Form.Item>
@@ -441,10 +463,14 @@ const RoleManagement = () => {
                 <Form.Item
                   name="displayName"
                   label="Display Name"
-                  rules={[{ required: true, message: 'Please enter display name' }]}
+                  rules={[
+                    { required: true, message: 'Please enter display name' },
+                    { min: 2, message: 'Display name must be at least 2 characters long' },
+                    { max: 100, message: 'Display name cannot exceed 100 characters' }
+                  ]}
                 >
-                  <Input 
-                    placeholder="e.g., Manager, Content Editor" 
+                  <Input
+                    placeholder="e.g., Manager, Content Editor"
                     size={isMobile ? 'middle' : 'large'}
                   />
                 </Form.Item>
@@ -454,11 +480,16 @@ const RoleManagement = () => {
             <Form.Item
               name="description"
               label="Description"
+              rules={[
+                { max: 500, message: 'Description cannot exceed 500 characters' }
+              ]}
             >
               <TextArea
                 rows={isMobile ? 2 : 3}
                 placeholder="Describe the role and its responsibilities"
                 size={isMobile ? 'middle' : 'large'}
+                showCount
+                maxLength={500}
               />
             </Form.Item>
 

@@ -153,13 +153,15 @@ const UserManagement = () => {
     const adminUsers = users.filter(user =>
       user.role?.name === 'admin' || user.role === 'admin'
     ).length;
-    const regularUsers = totalUsers - adminUsers;
+    const viewerUsers = users.filter(user =>
+      user.role?.name === 'viewer' || user.role === 'viewer'
+    ).length;
     const activeUsers = users.filter(user => user.lastLogin).length;
 
     return {
       totalUsers,
       adminUsers,
-      regularUsers,
+      viewerUsers,
       activeUsers
     };
   };
@@ -321,6 +323,7 @@ const UserManagement = () => {
               shape={isMobile ? 'default' : 'circle'}
               size={isMobile ? 'small' : 'middle'}
               className="gradient-button"
+              disabled={record.role?.name === 'admin' || record.role === 'admin'}
             >
               {isMobile && 'Edit'}
             </Button>
@@ -339,6 +342,7 @@ const UserManagement = () => {
                 icon={<DeleteOutlined />}
                 shape={isMobile ? 'default' : 'circle'}
                 size={isMobile ? 'small' : 'middle'}
+                disabled={record.role?.name === 'admin' || record.role === 'admin'}
               >
                 {isMobile && 'Delete'}
               </Button>
@@ -400,8 +404,8 @@ const UserManagement = () => {
           <Col xs={24} sm={12} md={6}>
             <Card className="dashboard-card" size={isMobile ? 'small' : 'default'}>
               <Statistic
-                title="Regular Users"
-                value={stats.regularUsers}
+                title="Viewer Users"
+                value={stats.viewerUsers}
                 prefix={<UserOutlined />}
                 valueStyle={{ color: '#52c41a' }}
               />
