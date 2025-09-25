@@ -15,7 +15,8 @@ import {
   Row,
   Col,
   Statistic,
-  App
+  App,
+  Switch
 } from 'antd';
 import {
   KeyOutlined,
@@ -24,7 +25,9 @@ import {
   PlusOutlined,
   AppstoreOutlined,
   SafetyOutlined,
-  FileOutlined
+  FileOutlined,
+  CheckOutlined,
+  CloseOutlined
 } from '@ant-design/icons';
 import Sidebar from '../../components/Sidebar';
 import { getPermissions, createPermission, updatePermission, deletePermission } from '../../api/permissionService';
@@ -137,6 +140,18 @@ const PermissionManagement = () => {
     }
   };
 
+  const handleStatusToggle = async (permissionId, currentStatus) => {
+    try {
+      const newStatus = !currentStatus;
+      await updatePermission(permissionId, { isActive: newStatus });
+      message.success(`Permission ${newStatus ? 'activated' : 'deactivated'} successfully`);
+      fetchPermissions();
+    } catch (error) {
+      console.error('Error updating permission status:', error);
+      message.error(error.message || 'Failed to update permission status');
+    }
+  };
+
   const getActionColor = (action) => {
     const colors = {
       create: 'green',
@@ -201,10 +216,19 @@ const PermissionManagement = () => {
           title: 'Status',
           dataIndex: 'isActive',
           key: 'isActive',
-          render: (isActive) => (
-            <Tag color={isActive ? 'green' : 'red'}>
-              {isActive ? 'Active' : 'Inactive'}
-            </Tag>
+          render: (isActive, record) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Switch
+                checked={isActive}
+                onChange={() => handleStatusToggle(record._id, isActive)}
+                checkedChildren={<CheckOutlined />}
+                unCheckedChildren={<CloseOutlined />}
+                size={isMobile ? 'small' : 'default'}
+              />
+              <Tag color={isActive ? 'green' : 'red'} style={{ margin: 0 }}>
+                {isActive ? 'Active' : 'Inactive'}
+              </Tag>
+            </div>
           )
         }
       );

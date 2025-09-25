@@ -18,7 +18,8 @@ import {
   Statistic,
   App,
   Transfer,
-  Descriptions
+  Descriptions,
+  Switch
 } from 'antd';
 import {
   UserOutlined,
@@ -28,7 +29,9 @@ import {
   PlusOutlined,
   TeamOutlined,
   KeyOutlined,
-  SettingOutlined
+  SettingOutlined,
+  CheckOutlined,
+  CloseOutlined
 } from '@ant-design/icons';
 import Sidebar from '../../components/Sidebar';
 import { getRoles, createRole, updateRole, deleteRole } from '../../api/roleService';
@@ -167,6 +170,18 @@ const RoleManagement = () => {
     }
   };
 
+  const handleStatusToggle = async (roleId, currentStatus) => {
+    try {
+      const newStatus = !currentStatus;
+      await updateRole(roleId, { isActive: newStatus });
+      message.success(`Role ${newStatus ? 'activated' : 'deactivated'} successfully`);
+      fetchRoles();
+    } catch (error) {
+      console.error('Error updating role status:', error);
+      message.error(error.message || 'Failed to update role status');
+    }
+  };
+
   const transferDataSource = permissions.map(permission => ({
     key: permission._id,
     title: `${permission.module?.displayName} - ${permission.action.charAt(0).toUpperCase() + permission.action.slice(1)}`,
@@ -247,10 +262,20 @@ const RoleManagement = () => {
           title: 'Status',
           dataIndex: 'isActive',
           key: 'isActive',
-          render: (isActive) => (
-            <Tag color={isActive ? 'green' : 'red'}>
-              {isActive ? 'Active' : 'Inactive'}
-            </Tag>
+          render: (isActive, record) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Switch
+                checked={isActive}
+                onChange={() => handleStatusToggle(record._id, isActive)}
+                checkedChildren={<CheckOutlined />}
+                unCheckedChildren={<CloseOutlined />}
+                disabled={record.isSystem}
+                size={isMobile ? 'small' : 'default'}
+              />
+              <Tag color={isActive ? 'green' : 'red'} style={{ margin: 0 }}>
+                {isActive ? 'Active' : 'Inactive'}
+              </Tag>
+            </div>
           )
         }
       );

@@ -6,10 +6,10 @@ const Module = require('../models/Module');
 // @access  Private/Admin
 exports.getPermissions = async (req, res) => {
   try {
-    const permissions = await Permission.find({ isActive: true })
+    const permissions = await Permission.find()
       .populate('module', 'name displayName')
       .sort({ 'module.displayName': 1, action: 1 });
-    
+
     res.status(200).json({
       success: true,
       count: permissions.length,

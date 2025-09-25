@@ -7,7 +7,7 @@ const User = require('../models/User');
 // @access  Private/Admin
 exports.getRoles = async (req, res) => {
   try {
-    const roles = await Role.find({ isActive: true })
+    const roles = await Role.find()
       .populate({
         path: 'permissions',
         populate: {
@@ -16,7 +16,7 @@ exports.getRoles = async (req, res) => {
         }
       })
       .sort({ displayName: 1 });
-    
+
     res.status(200).json({
       success: true,
       count: roles.length,
