@@ -94,27 +94,37 @@ exports.createPermission = async (req, res) => {
 
     // Check if permission already exists for this module and action
     const existingPermission = await Permission.findOne({ module, action });
+    let permission;
+
     if (existingPermission) {
-      return res.status(400).json({
-        success: false,
-        message: 'Permission already exists for this module and action'
+      // Update existing permission
+      permission = await Permission.findByIdAndUpdate(
+        existingPermission._id,
+        {
+          name,
+          action,
+          module,
+          description
+        },
+        { new: true, runValidators: true }
+      );
+    } else {
+      // Create new permission
+      permission = await Permission.create({
+        name,
+        action,
+        module,
+        description
       });
     }
-
-    // Create permission
-    const permission = await Permission.create({
-      name,
-      action,
-      module,
-      description
-    });
 
     // Populate module data
     await permission.populate('module', 'name displayName');
 
-    res.status(201).json({
+    res.status(existingPermission ? 200 : 201).json({
       success: true,
-      data: permission
+      data: permission,
+      message: existingPermission ? 'Permission updated successfully' : 'Permission created successfully'
     });
   } catch (error) {
     console.error(error);
@@ -202,12 +212,12 @@ exports.deletePermission = async (req, res) => {
       });
     }
 
-    // Soft delete by setting isActive to false
-    await Permission.findByIdAndUpdate(req.params.id, { isActive: false });
+    // Hard delete - completely remove from database
+    await Permission.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
-      message: 'Permission deleted successfully'
+      message: 'Permission permanently deleted successfully'
     });
   } catch (error) {
     console.error(error);

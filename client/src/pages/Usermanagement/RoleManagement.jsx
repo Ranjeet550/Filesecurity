@@ -12,7 +12,6 @@ import {
   Select,
   Tag,
   Tooltip,
-  Divider,
   Row,
   Col,
   Statistic,
@@ -162,7 +161,7 @@ const RoleManagement = () => {
   const handleDelete = async (id) => {
     try {
       await deleteRole(id);
-      message.success('Role deleted successfully');
+      message.success('Role permanently deleted successfully');
       fetchRoles();
     } catch (error) {
       console.error('Error deleting role:', error);
@@ -181,6 +180,7 @@ const RoleManagement = () => {
       message.error(error.message || 'Failed to update role status');
     }
   };
+
 
   const transferDataSource = permissions.map(permission => ({
     key: permission._id,
@@ -257,29 +257,30 @@ const RoleManagement = () => {
               <Text type="secondary"> permissions</Text>
             </div>
           )
-        },
-        {
-          title: 'Status',
-          dataIndex: 'isActive',
-          key: 'isActive',
-          render: (isActive, record) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Switch
-                checked={isActive}
-                onChange={() => handleStatusToggle(record._id, isActive)}
-                checkedChildren={<CheckOutlined />}
-                unCheckedChildren={<CloseOutlined />}
-                disabled={record.isSystem}
-                size={isMobile ? 'small' : 'default'}
-              />
-              <Tag color={isActive ? 'green' : 'red'} style={{ margin: 0 }}>
-                {isActive ? 'Active' : 'Inactive'}
-              </Tag>
-            </div>
-          )
         }
       );
     }
+
+    // Add status column for all screen sizes
+    baseColumns.push({
+      title: 'Status',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Switch
+            checked={isActive}
+            onChange={() => handleStatusToggle(record._id, isActive)}
+            checkedChildren="Enable"
+            unCheckedChildren="Disable"
+            size={isMobile ? 'small' : 'default'}
+          />
+          <Tag color={isActive ? 'green' : 'red'} style={{ margin: 0 }}>
+            {isActive ? 'Active' : 'Inactive'}
+          </Tag>
+        </div>
+      )
+    });
 
     // Add actions column
     baseColumns.push({
@@ -306,10 +307,11 @@ const RoleManagement = () => {
             <Tooltip title="Delete Role">
               <Popconfirm
                 title="Are you sure you want to delete this role?"
-                description="This action cannot be undone."
+                description="This action cannot be undone. The role will be permanently removed from the system."
                 onConfirm={() => handleDelete(record._id)}
-                okText="Yes"
-                cancelText="No"
+                okText="Delete"
+                cancelText="Cancel"
+                okButtonProps={{ danger: true }}
               >
                 <Button
                   type={isMobile ? 'default' : 'text'}

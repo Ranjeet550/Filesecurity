@@ -132,7 +132,7 @@ const PermissionManagement = () => {
   const handleDelete = async (id) => {
     try {
       await deletePermission(id);
-      message.success('Permission deleted successfully');
+      message.success('Permission permanently deleted successfully');
       fetchPermissions();
     } catch (error) {
       console.error('Error deleting permission:', error);
@@ -151,6 +151,7 @@ const PermissionManagement = () => {
       message.error(error.message || 'Failed to update permission status');
     }
   };
+
 
   const getActionColor = (action) => {
     const colors = {
@@ -254,10 +255,11 @@ const PermissionManagement = () => {
           <Tooltip title="Delete Permission">
             <Popconfirm
               title="Are you sure you want to delete this permission?"
-              description="This action cannot be undone."
+              description="This action cannot be undone. The permission will be permanently removed from the system."
               onConfirm={() => handleDelete(record._id)}
-              okText="Yes"
-              cancelText="No"
+              okText="Delete"
+              cancelText="Cancel"
+              okButtonProps={{ danger: true }}
             >
               <Button
                 type={isMobile ? 'default' : 'text'}
@@ -289,6 +291,18 @@ const PermissionManagement = () => {
 
   return (
     <Sidebar>
+      <style>{`
+        .deleted-permission-row {
+          opacity: 0.6;
+          background-color: #fff1f0 !important;
+        }
+        .deleted-permission-row:hover {
+          background-color: #ffebe9 !important;
+        }
+        .deleted-permission-row .ant-table-cell {
+          border-color: #ffccc7;
+        }
+      `}</style>
       <div style={{ padding: isMobile ? '16px' : '24px', paddingTop: isMobile ? '16px' : '24px' }}>
         <div style={{ marginBottom: '24px' }}>
           <Title level={isMobile ? 3 : 2} style={{ margin: 0, color: '#1a1a1a', fontSize: isMobile ? '20px' : '24px' }}>
@@ -337,6 +351,7 @@ const PermissionManagement = () => {
             dataSource={permissions}
             rowKey="_id"
             loading={loading}
+            rowClassName={(record) => !record.isActive ? 'deleted-permission-row' : ''}
             scroll={{ x: isMobile ? 700 : undefined }}
             pagination={{
               pageSize: isMobile ? 5 : 10,

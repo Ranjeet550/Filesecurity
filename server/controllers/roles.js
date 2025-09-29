@@ -231,12 +231,12 @@ exports.deleteRole = async (req, res) => {
       });
     }
 
-    // Soft delete by setting isActive to false
-    await Role.findByIdAndUpdate(req.params.id, { isActive: false });
+    // Hard delete - completely remove from database
+    await Role.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
-      message: 'Role deleted successfully'
+      message: 'Role permanently deleted successfully'
     });
   } catch (error) {
     console.error(error);
