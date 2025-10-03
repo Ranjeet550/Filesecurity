@@ -1,4 +1,5 @@
 const Activity = require('../models/Activity');
+const { encryptResponse } = require('../utils/responseEncryption');
 
 /**
  * @desc    Get all activities with pagination and filtering
@@ -60,17 +61,17 @@ exports.getActivities = async (req, res) => {
       pages: Math.ceil(total / limit)
     };
     
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       pagination,
       data: activities
-    });
+    }));
   } catch (error) {
     console.error('Error fetching activities:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -85,22 +86,22 @@ exports.getActivity = async (req, res) => {
       .populate('user', 'name email');
     
     if (!activity) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Activity not found'
-      });
+      }));
     }
     
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: activity
-    });
+    }));
   } catch (error) {
     console.error('Error fetching activity:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -172,19 +173,19 @@ exports.getActivityStats = async (req, res) => {
       }
     ]);
     
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: {
         typeStats,
         actionStats,
         dailyStats
       }
-    });
+    }));
   } catch (error) {
     console.error('Error fetching activity stats:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };

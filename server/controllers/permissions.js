@@ -1,5 +1,6 @@
 const Permission = require('../models/Permission');
 const Module = require('../models/Module');
+const { encryptResponse } = require('../utils/responseEncryption');
 
 // @desc    Get all permissions
 // @route   GET /api/permissions
@@ -10,17 +11,17 @@ exports.getPermissions = async (req, res) => {
       .populate('module', 'name displayName')
       .sort({ 'module.displayName': 1, action: 1 });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       count: permissions.length,
       data: permissions
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -34,17 +35,17 @@ exports.getPermissionsByModule = async (req, res) => {
       isActive: true 
     }).populate('module', 'name displayName');
     
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       count: permissions.length,
       data: permissions
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -57,22 +58,22 @@ exports.getPermission = async (req, res) => {
       .populate('module', 'name displayName');
 
     if (!permission) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Permission not found'
-      });
+      }));
     }
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: permission
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -86,10 +87,10 @@ exports.createPermission = async (req, res) => {
     // Check if module exists
     const moduleExists = await Module.findById(module);
     if (!moduleExists) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Module not found'
-      });
+      }));
     }
 
     // Check if permission already exists for this module and action
@@ -121,17 +122,17 @@ exports.createPermission = async (req, res) => {
     // Populate module data
     await permission.populate('module', 'name displayName');
 
-    res.status(existingPermission ? 200 : 201).json({
+    res.status(existingPermission ? 200 : 201).json(encryptResponse({
       success: true,
       data: permission,
       message: existingPermission ? 'Permission updated successfully' : 'Permission created successfully'
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -145,20 +146,20 @@ exports.updatePermission = async (req, res) => {
     let permission = await Permission.findById(req.params.id);
 
     if (!permission) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Permission not found'
-      });
+      }));
     }
 
     // Check if module exists (if being updated)
     if (module) {
       const moduleExists = await Module.findById(module);
       if (!moduleExists) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Module not found'
-        });
+        }));
       }
     }
 
@@ -171,10 +172,10 @@ exports.updatePermission = async (req, res) => {
         _id: { $ne: req.params.id }
       });
       if (existingPermission) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Permission already exists for this module and action'
-        });
+        }));
       }
     }
 
@@ -185,16 +186,16 @@ exports.updatePermission = async (req, res) => {
       { new: true, runValidators: true }
     ).populate('module', 'name displayName');
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: permission
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -206,24 +207,24 @@ exports.deletePermission = async (req, res) => {
     const permission = await Permission.findById(req.params.id);
 
     if (!permission) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Permission not found'
-      });
+      }));
     }
 
     // Hard delete - completely remove from database
     await Permission.findByIdAndDelete(req.params.id);
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       message: 'Permission permanently deleted successfully'
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };

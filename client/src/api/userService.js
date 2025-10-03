@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { USERS_API_URL } from '../config';
+import { decryptResponse } from '../utils/responseDecryption';
 
 // Create a function to get the auth token
 const getAuthToken = () => {
@@ -9,12 +10,27 @@ const getAuthToken = () => {
 // Create an axios instance with auth header
 const authAxios = () => {
   const token = getAuthToken();
-  return axios.create({
+  const instance = axios.create({
     headers: {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : ''
     }
   });
+
+  // Add response interceptor for decryption
+  instance.interceptors.response.use(
+    async (response) => {
+      if (response.data && response.data.encrypted) {
+        response.data = await decryptResponse(response.data.iv, response.data.encrypted);
+      }
+      return response;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  return instance;
 };
 
 // Get all users

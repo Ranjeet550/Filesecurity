@@ -19,6 +19,8 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AUTH_API_URL } from '../../config';
+import { encryptRequest } from '../../utils/requestEncryption';
+import { decryptResponse } from '../../utils/responseDecryption';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -38,14 +40,37 @@ const ForgotPassword = () => {
       setLoading(true);
       setError(null);
 
-      await axios.post(`${AUTH_API_URL}/forgot-password`, { email: values.email });
+      // Encrypt the request data
+      const encryptedData = await encryptRequest({ email: values.email });
+
+      const res = await axios.post(`${AUTH_API_URL}/forgot-password`, encryptedData);
+
+      // Decrypt response if encrypted
+      let responseData = res.data;
+      if (responseData && responseData.encrypted) {
+        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+      }
 
       setEmailSent(true);
       setEmail(values.email);
       message.success('OTP sent to your email');
     } catch (err) {
       console.error('Forgot password error:', err);
-      setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+      // Try to decrypt error response
+      let errorMessage = 'Failed to send OTP. Please try again.';
+      if (err.response?.data) {
+        if (err.response.data.encrypted) {
+          try {
+            const decryptedError = await decryptResponse(err.response.data.iv, err.response.data.encrypted);
+            errorMessage = decryptedError.message || errorMessage;
+          } catch (decryptErr) {
+            errorMessage = err.response.data.message || errorMessage;
+          }
+        } else {
+          errorMessage = err.response.data.message || errorMessage;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

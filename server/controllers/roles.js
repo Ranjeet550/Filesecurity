@@ -1,6 +1,7 @@
 const Role = require('../models/Role');
 const Permission = require('../models/Permission');
 const User = require('../models/User');
+const { encryptResponse } = require('../utils/responseEncryption');
 
 // @desc    Get all roles
 // @route   GET /api/roles
@@ -17,17 +18,17 @@ exports.getRoles = async (req, res) => {
       })
       .sort({ displayName: 1 });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       count: roles.length,
       data: roles
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -46,22 +47,22 @@ exports.getRole = async (req, res) => {
       });
 
     if (!role) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Role not found'
-      });
+      }));
     }
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: role
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -75,10 +76,10 @@ exports.createRole = async (req, res) => {
     // Check if role already exists
     const existingRole = await Role.findOne({ name });
     if (existingRole) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Role with this name already exists'
-      });
+      }));
     }
 
     // Validate permissions if provided
@@ -88,10 +89,10 @@ exports.createRole = async (req, res) => {
         isActive: true 
       });
       if (validPermissions.length !== permissions.length) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'One or more permissions are invalid'
-        });
+        }));
       }
     }
 
@@ -112,16 +113,16 @@ exports.createRole = async (req, res) => {
       }
     });
 
-    res.status(201).json({
+    res.status(201).json(encryptResponse({
       success: true,
       data: role
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -135,28 +136,21 @@ exports.updateRole = async (req, res) => {
     let role = await Role.findById(req.params.id);
 
     if (!role) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Role not found'
-      });
+      }));
     }
 
-    // Check if it's a system role
-    if (role.isSystem && isActive === false) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot deactivate system role'
-      });
-    }
 
     // Check if name is being changed and if it already exists
     if (name && name !== role.name) {
       const existingRole = await Role.findOne({ name });
       if (existingRole) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Role with this name already exists'
-        });
+        }));
       }
     }
 
@@ -167,10 +161,10 @@ exports.updateRole = async (req, res) => {
         isActive: true 
       });
       if (validPermissions.length !== permissions.length) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'One or more permissions are invalid'
-        });
+        }));
       }
     }
 
@@ -187,16 +181,16 @@ exports.updateRole = async (req, res) => {
       }
     });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: role
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -208,41 +202,41 @@ exports.deleteRole = async (req, res) => {
     const role = await Role.findById(req.params.id);
 
     if (!role) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Role not found'
-      });
+      }));
     }
 
     // Check if it's a system role
     if (role.isSystem) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Cannot delete system role'
-      });
+      }));
     }
 
     // Check if any users are assigned to this role
     const usersWithRole = await User.countDocuments({ role: req.params.id });
     if (usersWithRole > 0) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: `Cannot delete role. ${usersWithRole} user(s) are assigned to this role`
-      });
+      }));
     }
 
     // Hard delete - completely remove from database
     await Role.findByIdAndDelete(req.params.id);
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       message: 'Role permanently deleted successfully'
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };

@@ -1,4 +1,5 @@
 const Module = require('../models/Module');
+const { encryptResponse } = require('../utils/responseEncryption');
 
 // @desc    Get all modules
 // @route   GET /api/modules
@@ -7,17 +8,17 @@ exports.getModules = async (req, res) => {
   try {
     const modules = await Module.find({ isActive: true }).sort({ displayName: 1 });
     
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       count: modules.length,
       data: modules
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -29,22 +30,22 @@ exports.getModule = async (req, res) => {
     const module = await Module.findById(req.params.id);
 
     if (!module) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Module not found'
-      });
+      }));
     }
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: module
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -58,10 +59,10 @@ exports.createModule = async (req, res) => {
     // Check if module already exists
     const existingModule = await Module.findOne({ name });
     if (existingModule) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Module with this name already exists'
-      });
+      }));
     }
 
     // Create module
@@ -73,16 +74,16 @@ exports.createModule = async (req, res) => {
       route
     });
 
-    res.status(201).json({
+    res.status(201).json(encryptResponse({
       success: true,
       data: module
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -96,20 +97,20 @@ exports.updateModule = async (req, res) => {
     let module = await Module.findById(req.params.id);
 
     if (!module) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Module not found'
-      });
+      }));
     }
 
     // Check if name is being changed and if it already exists
     if (name && name !== module.name) {
       const existingModule = await Module.findOne({ name });
       if (existingModule) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Module with this name already exists'
-        });
+        }));
       }
     }
 
@@ -120,16 +121,16 @@ exports.updateModule = async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: module
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -141,24 +142,24 @@ exports.deleteModule = async (req, res) => {
     const module = await Module.findById(req.params.id);
 
     if (!module) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'Module not found'
-      });
+      }));
     }
 
     // Soft delete by setting isActive to false
     await Module.findByIdAndUpdate(req.params.id, { isActive: false });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       message: 'Module deleted successfully'
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };

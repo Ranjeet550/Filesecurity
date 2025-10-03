@@ -22,6 +22,8 @@ import {
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { AUTH_API_URL } from '../../config';
+import { encryptRequest } from '../../utils/requestEncryption';
+import { decryptResponse } from '../../utils/responseDecryption';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -61,19 +63,42 @@ const OTPVerification = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.post(`${AUTH_API_URL}/verify-otp`, {
+      // Encrypt the request data
+      const encryptedData = await encryptRequest({
         email,
         otp: values.otp
       });
 
+      const response = await axios.post(`${AUTH_API_URL}/verify-otp`, encryptedData);
+
+      // Decrypt response if encrypted
+      let responseData = response.data;
+      if (responseData && responseData.encrypted) {
+        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+      }
+
       // Store the reset token
-      localStorage.setItem('resetToken', response.data.resetToken);
+      localStorage.setItem('resetToken', responseData.resetToken);
 
       message.success('OTP verified successfully');
       navigate('/reset-password', { state: { email } });
     } catch (err) {
       console.error('OTP verification error:', err);
-      setError(err.response?.data?.message || 'Failed to verify OTP. Please try again.');
+      // Try to decrypt error response
+      let errorMessage = 'Failed to verify OTP. Please try again.';
+      if (err.response?.data) {
+        if (err.response.data.encrypted) {
+          try {
+            const decryptedError = await decryptResponse(err.response.data.iv, err.response.data.encrypted);
+            errorMessage = decryptedError.message || errorMessage;
+          } catch (decryptErr) {
+            errorMessage = err.response.data.message || errorMessage;
+          }
+        } else {
+          errorMessage = err.response.data.message || errorMessage;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -84,13 +109,36 @@ const OTPVerification = () => {
       setResending(true);
       setError(null);
 
-      await axios.post(`${AUTH_API_URL}/forgot-password`, { email });
+      // Encrypt the request data
+      const encryptedData = await encryptRequest({ email });
+
+      const res = await axios.post(`${AUTH_API_URL}/forgot-password`, encryptedData);
+
+      // Decrypt response if encrypted
+      let responseData = res.data;
+      if (responseData && responseData.encrypted) {
+        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+      }
 
       message.success('New OTP sent to your email');
       setCountdown(60); // Set 60 seconds countdown
     } catch (err) {
       console.error('Resend OTP error:', err);
-      setError(err.response?.data?.message || 'Failed to resend OTP. Please try again.');
+      // Try to decrypt error response
+      let errorMessage = 'Failed to resend OTP. Please try again.';
+      if (err.response?.data) {
+        if (err.response.data.encrypted) {
+          try {
+            const decryptedError = await decryptResponse(err.response.data.iv, err.response.data.encrypted);
+            errorMessage = decryptedError.message || errorMessage;
+          } catch (decryptErr) {
+            errorMessage = err.response.data.message || errorMessage;
+          }
+        } else {
+          errorMessage = err.response.data.message || errorMessage;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setResending(false);
     }

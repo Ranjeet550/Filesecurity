@@ -5,18 +5,18 @@ exports.acceptFile = async (req, res) => {
   try {
     const file = await require('../models/File').findById(req.params.id);
     if (!file) {
-      return res.status(404).json({ success: false, message: 'File not found' });
+      return res.status(404).json(encryptResponse({ success: false, message: 'File not found' }));
     }
     // Only assigned users can accept
     if (!Array.isArray(file.assignedTo) || !file.assignedTo.map(id => id.toString()).includes(req.user.id)) {
-      return res.status(403).json({ success: false, message: 'Not authorized to accept this file' });
+      return res.status(403).json(encryptResponse({ success: false, message: 'Not authorized to accept this file' }));
     }
     file.status = 'Accepted';
     await file.save();
-    res.status(200).json({ success: true, message: 'File accepted', data: { status: file.status } });
+    res.status(200).json(encryptResponse({ success: true, message: 'File accepted', data: { status: file.status } }));
   } catch (error) {
     console.error('Error in acceptFile:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json(encryptResponse({ success: false, message: 'Server error' }));
   }
 };
 const File = require('../models/File');
@@ -25,6 +25,7 @@ const path = require('path');
 const { logActivity } = require('../middleware/logger');
 const { encryptFile } = require('../utils/fileEncryption');
 const { protectUploadedPDF, protectUploadedExcel } = require('../utils/pdfProtection');
+const { encryptResponse } = require('../utils/responseEncryption');
 
 // @desc    Upload a file
 // @route   POST /api/files/upload
@@ -34,36 +35,25 @@ exports.uploadFile = async (req, res) => {
     console.log('Upload request received');
     console.log('Request body:', req.body);
     console.log('Request body keys:', Object.keys(req.body));
-    console.log('Password in body:', req.body.password);
     console.log('Request files:', req.files);
     console.log('User:', req.user);
-    
-    // Extract location data from form fields
+
+    // Extract data from form fields
+    const password = req.body.password || '';
     let userLocation = {
-      latitude: 0,
-      longitude: 0,
-      city: 'Unknown',
-      country: 'Unknown'
+      latitude: parseFloat(req.body.latitude) || 0,
+      longitude: parseFloat(req.body.longitude) || 0,
+      city: req.body.city || 'Unknown',
+      country: req.body.country || 'Unknown'
     };
-    
-    if (req.body.latitude && req.body.longitude) {
-      userLocation = {
-        latitude: parseFloat(req.body.latitude) || 0,
-        longitude: parseFloat(req.body.longitude) || 0,
-        city: req.body.city || 'Unknown',
-        country: req.body.country || 'Unknown'
-      };
-      console.log('Location data extracted from form:', userLocation);
-    } else {
-      console.log('No location data found in form, using default');
-    }
+    console.log('Location data extracted:', userLocation);
 
     if (!req.files || !req.files.file || req.files.file.length === 0) {
       console.log('No file found in request');
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Please upload a file'
-      });
+      }));
     }
 
     const uploadedFile = req.files.file[0];
@@ -75,29 +65,14 @@ exports.uploadFile = async (req, res) => {
       mimetype: uploadedFile.mimetype
     });
 
-    // Check if a custom password was provided, otherwise generate one
-    let password;
-    console.log('Request body for password check:', req.body);
-    console.log('Password field in body:', req.body.password);
-    console.log('Password field type:', typeof req.body.password);
-    
-    if (req.body.password && req.body.password.trim()) {
-      const customPassword = req.body.password.trim();
-      
-      // Validate custom password length (minimum 8 characters)
-      if (customPassword.length < 8) {
-        return res.status(400).json({
-          success: false,
-          message: 'Custom password must be at least 8 characters long'
-        });
-      }
-      
-      password = customPassword;
-      console.log('Using custom password from request:', password);
-    } else {
-      password = File.generatePassword();
-      console.log('Generated random password:', password);
+    // Validate password length (minimum 8 characters)
+    if (password.length < 8) {
+      return res.status(400).json(encryptResponse({
+        success: false,
+        message: 'Password must be at least 8 characters long'
+      }));
     }
+    console.log('Using password from request:', password);
 
     // Normalize the file path to ensure consistency
     const normalizedPath = path.normalize(uploadedFile.path);
@@ -234,22 +209,21 @@ exports.uploadFile = async (req, res) => {
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
-    res.status(201).json({
+    res.status(201).json(encryptResponse({
       success: true,
       data: {
         id: file._id,
         filename: file.originalName,
-        password: password,
         uploadedAt: file.createdAt,
         expiresAt: file.expiresAt
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -284,18 +258,18 @@ exports.getFiles = async (req, res) => {
 
     const files = await filesQuery;
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       count: files.length,
       data: files,
       isAdmin: isAdmin
-    });
+    }));
   } catch (error) {
     console.error('Error in getFiles:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -307,28 +281,29 @@ exports.assignFileToUsers = async (req, res) => {
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
     if (!isAdmin) {
-      return res.status(403).json({ success: false, message: 'Only admin can assign files.' });
+      return res.status(403).json(encryptResponse({ success: false, message: 'Only admin can assign files.' }));
     }
 
     const fileId = req.params.id;
     const { userIds } = req.body; // expects array of user IDs
     if (!Array.isArray(userIds) || userIds.length === 0) {
-      return res.status(400).json({ success: false, message: 'userIds array is required.' });
+      return res.status(400).json(encryptResponse({ success: false, message: 'userIds array is required.' }));
     }
 
     const file = await File.findById(fileId);
     if (!file) {
-      return res.status(404).json({ success: false, message: 'File not found.' });
+      return res.status(404).json(encryptResponse({ success: false, message: 'File not found.' }));
     }
 
     // Assign users (avoid duplicates)
     file.assignedTo = Array.from(new Set([...(file.assignedTo || []), ...userIds]));
     await file.save();
 
-    res.status(200).json({ success: true, message: 'File assigned to users.', data: file });
+    const { password, ...fileWithoutPassword } = file.toObject();
+    res.status(200).json(encryptResponse({ success: true, message: 'File assigned to users.', data: fileWithoutPassword }));
   } catch (error) {
     console.error('Error in assignFileToUsers:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json(encryptResponse({ success: false, message: 'Server error' }));
   }
 };
 
@@ -340,10 +315,10 @@ exports.getFile = async (req, res) => {
     const file = await File.findById(req.params.id);
 
     if (!file) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'File not found'
-      });
+      }));
     }
 
 
@@ -354,13 +329,13 @@ exports.getFile = async (req, res) => {
     const isAssigned = Array.isArray(file.assignedTo) && file.assignedTo.map(id => id.toString()).includes(req.user.id);
 
     if (!isUploader && !isAdmin && !isAssigned) {
-      return res.status(403).json({
+      return res.status(403).json(encryptResponse({
         success: false,
         message: 'Not authorized to access this file'
-      });
+      }));
     }
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: {
         id: file._id,
@@ -372,13 +347,13 @@ exports.getFile = async (req, res) => {
         uploadLocation: file.uploadLocation,
         status: file.status
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -390,27 +365,27 @@ exports.downloadFile = async (req, res) => {
     const { password } = req.body;
 
     if (!password) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Password is required'
-      });
+      }));
     }
 
     const file = await File.findById(req.params.id);
 
     if (!file) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'File not found'
-      });
+      }));
     }
 
     // Verify password
     if (!file.verifyPassword(password)) {
-      return res.status(401).json({
+      return res.status(401).json(encryptResponse({
         success: false,
         message: 'Invalid password'
-      });
+      }));
     }
 
     // Record download information (always record, even for anonymous downloads)
@@ -489,10 +464,10 @@ exports.downloadFile = async (req, res) => {
         userAgent: req.headers['user-agent'] || 'Unknown'
       });
 
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'File not found on server'
-      });
+      }));
     }
 
     // Log successful download
@@ -632,17 +607,17 @@ exports.downloadFile = async (req, res) => {
       }
     } catch (error) {
       console.error('Error processing file for download:', error);
-      return res.status(500).json({
+      return res.status(500).json(encryptResponse({
         success: false,
         message: 'Error processing file for download'
-      });
+      }));
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -654,10 +629,10 @@ exports.getFilePassword = async (req, res) => {
     const file = await File.findById(req.params.id);
 
     if (!file) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'File not found'
-      });
+      }));
     }
 
     // Check if user is the owner of the file or admin
@@ -665,10 +640,10 @@ exports.getFilePassword = async (req, res) => {
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
 
     if (file.uploadedBy.toString() !== req.user.id && !isAdmin) {
-      return res.status(403).json({
+      return res.status(403).json(encryptResponse({
         success: false,
         message: 'Not authorized to access this file'
-      });
+      }));
     }
 
     // Log password retrieval activity
@@ -689,18 +664,18 @@ exports.getFilePassword = async (req, res) => {
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: {
         password: file.password
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -712,10 +687,10 @@ exports.deleteFile = async (req, res) => {
     const file = await File.findById(req.params.id);
 
     if (!file) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'File not found'
-      });
+      }));
     }
 
     // Check if user is the owner of the file or has admin role
@@ -725,10 +700,10 @@ exports.deleteFile = async (req, res) => {
 
     // Allow deletion if user is admin or owner of the file
     if (file.uploadedBy.toString() !== req.user.id && !isAdmin) {
-      return res.status(403).json({
+      return res.status(403).json(encryptResponse({
         success: false,
         message: 'Not authorized to delete this file'
-      });
+      }));
     }
 
     // Delete file from disk
@@ -760,15 +735,15 @@ exports.deleteFile = async (req, res) => {
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: {}
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };

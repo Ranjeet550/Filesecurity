@@ -22,6 +22,8 @@ export const assignFileToUsers = async (fileId, userIds) => {
 };
 import axios from 'axios';
 import { FILES_API_URL } from '../config';
+import { decryptResponse } from '../utils/responseDecryption';
+import { encryptRequest } from '../utils/requestEncryption';
 
 // Create a function to get the auth token
 const getAuthToken = () => {
@@ -31,13 +33,29 @@ const getAuthToken = () => {
 // Create an axios instance with auth header
 const authAxios = () => {
   const token = getAuthToken();
-  return axios.create({
+  const instance = axios.create({
     headers: {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : ''
     }
   });
+
+  // Add response interceptor for decryption
+  instance.interceptors.response.use(
+    async (response) => {
+      if (response.data && response.data.encrypted) {
+        response.data = await decryptResponse(response.data.iv, response.data.encrypted);
+      }
+      return response;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  return instance;
 };
+
 
 // Get location data
 export const getLocationData = async () => {
@@ -133,13 +151,8 @@ export const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Add password if provided
-    if (file.password) {
-      formData.append('password', file.password);
-      console.log('Password included in upload:', file.password);
-    }
-
-    // Add location data to the form data
+    // Add fields in plain text
+    formData.append('password', file.password || '');
     formData.append('latitude', location.latitude.toString());
     formData.append('longitude', location.longitude.toString());
     formData.append('city', location.city);
@@ -167,14 +180,33 @@ export const uploadFile = async (file) => {
       }
     });
 
-    return response.data;
+    // Decrypt response if encrypted
+    let data = response.data;
+    if (data && data.encrypted) {
+      try {
+        data = await decryptResponse(data.iv, data.encrypted);
+      } catch (decryptError) {
+        console.error('Response decryption failed:', decryptError);
+        // Fallback to encrypted data if decryption fails
+      }
+    }
+
+    return data;
   } catch (error) {
     console.error('Upload error details:', error);
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error('Server error response:', error.response.data);
-      throw error.response.data || { message: 'Server error' };
+      let errorData = error.response.data;
+      if (errorData && errorData.encrypted) {
+        try {
+          errorData = await decryptResponse(errorData.iv, errorData.encrypted);
+        } catch (decryptError) {
+          console.error('Error response decryption failed:', decryptError);
+        }
+      }
+      console.error('Server error response:', errorData);
+      throw errorData || { message: 'Server error' };
     } else if (error.request) {
       // The request was made but no response was received
       console.error('No response received from server');

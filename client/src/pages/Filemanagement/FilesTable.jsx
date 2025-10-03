@@ -477,6 +477,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
               className="gradient-button"
               onClick={() => handleDownloadClick(record)}
               loading={downloadLoading && selectedFile?.id === (record.id || record._id)}
+              disabled={isViewer && record.status !== 'Accepted'}
             >
               <span className="action-text">Download</span>
             </Button>

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
+const { encryptResponse } = require('../utils/responseEncryption');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -11,17 +12,17 @@ exports.getUsers = async (req, res) => {
       .populate('role', 'name displayName')
       .sort({ createdAt: -1 });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       count: users.length,
       data: users
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -35,22 +36,22 @@ exports.getUser = async (req, res) => {
       .populate('role', 'name displayName');
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
-      });
+      }));
     }
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: user
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -64,10 +65,10 @@ exports.createUser = async (req, res) => {
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Email already registered'
-      });
+      }));
     }
 
     // Validate role if provided
@@ -75,20 +76,20 @@ exports.createUser = async (req, res) => {
     if (role) {
       const roleExists = await Role.findById(role);
       if (!roleExists) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Invalid role specified'
-        });
+        }));
       }
       roleId = role;
     } else {
       // Get default user role
       const defaultRole = await Role.findOne({ name: 'user' });
       if (!defaultRole) {
-        return res.status(500).json({
+        return res.status(500).json(encryptResponse({
           success: false,
           message: 'Default user role not found'
-        });
+        }));
       }
       roleId = defaultRole._id;
     }
@@ -104,7 +105,7 @@ exports.createUser = async (req, res) => {
     // Populate role for response
     await user.populate('role', 'name displayName');
 
-    res.status(201).json({
+    res.status(201).json(encryptResponse({
       success: true,
       data: {
         id: user._id,
@@ -112,13 +113,13 @@ exports.createUser = async (req, res) => {
         email: user.email,
         role: user.role
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -133,20 +134,20 @@ exports.updateUser = async (req, res) => {
     let user = await User.findById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
-      });
+      }));
     }
 
     // Check if email is being changed and if it already exists
     if (email && email !== user.email) {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Email already registered'
-        });
+        }));
       }
     }
 
@@ -154,10 +155,10 @@ exports.updateUser = async (req, res) => {
     if (role) {
       const roleExists = await Role.findById(role);
       if (!roleExists) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Invalid role specified'
-        });
+        }));
       }
     }
 
@@ -168,16 +169,16 @@ exports.updateUser = async (req, res) => {
       { new: true, runValidators: true }
     ).select('-password').populate('role', 'name displayName');
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: user
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -189,23 +190,23 @@ exports.deleteUser = async (req, res) => {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
-      });
+      }));
     }
 
     await user.deleteOne();
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: {}
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };

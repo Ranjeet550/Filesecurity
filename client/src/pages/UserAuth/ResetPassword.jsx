@@ -23,6 +23,8 @@ import {
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { AUTH_API_URL } from '../../config';
+import { encryptRequest } from '../../utils/requestEncryption';
+import { decryptResponse } from '../../utils/responseDecryption';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -59,15 +61,24 @@ const ResetPassword = () => {
 
       const resetToken = localStorage.getItem('resetToken');
 
-      await axios.post(
+      // Encrypt the request data
+      const encryptedData = await encryptRequest({ password: values.password });
+
+      const res = await axios.post(
         `${AUTH_API_URL}/reset-password`,
-        { password: values.password },
+        encryptedData,
         {
           headers: {
             Authorization: `Bearer ${resetToken}`
           }
         }
       );
+
+      // Decrypt response if encrypted
+      let responseData = res.data;
+      if (responseData && responseData.encrypted) {
+        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+      }
 
       // Clear reset token
       localStorage.removeItem('resetToken');
@@ -76,7 +87,21 @@ const ResetPassword = () => {
       message.success('Password reset successful');
     } catch (err) {
       console.error('Password reset error:', err);
-      setError(err.response?.data?.message || 'Failed to reset password. Please try again.');
+      // Try to decrypt error response
+      let errorMessage = 'Failed to reset password. Please try again.';
+      if (err.response?.data) {
+        if (err.response.data.encrypted) {
+          try {
+            const decryptedError = await decryptResponse(err.response.data.iv, err.response.data.encrypted);
+            errorMessage = decryptedError.message || errorMessage;
+          } catch (decryptErr) {
+            errorMessage = err.response.data.message || errorMessage;
+          }
+        } else {
+          errorMessage = err.response.data.message || errorMessage;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

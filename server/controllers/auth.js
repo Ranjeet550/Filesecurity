@@ -5,21 +5,27 @@ const { generateOTP, sendOTPEmail } = require('../utils/emailService');
 const fs = require('fs');
 const path = require('path');
 const { logActivity } = require('../middleware/logger');
+const { encryptResponse, decryptRequest } = require('../utils/responseEncryption');
 
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    // Decrypt request body if encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.iv && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    }
+    const { name, email, password, role } = requestBody;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Email already registered'
-      });
+      }));
     }
 
     // Get default role if not provided
@@ -27,20 +33,20 @@ exports.register = async (req, res) => {
     if (!role) {
       const defaultRole = await Role.findOne({ name: 'user' });
       if (!defaultRole) {
-        return res.status(500).json({
+        return res.status(500).json(encryptResponse({
           success: false,
           message: 'Default user role not found. Please contact administrator.'
-        });
+        }));
       }
       roleId = defaultRole._id;
     } else {
       // Validate provided role
       const roleExists = await Role.findById(role);
       if (!roleExists) {
-        return res.status(400).json({
+        return res.status(400).json(encryptResponse({
           success: false,
           message: 'Invalid role specified'
-        });
+        }));
       }
     }
 
@@ -79,7 +85,7 @@ exports.register = async (req, res) => {
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
-    res.status(201).json({
+    res.status(201).json(encryptResponse({
       success: true,
       token,
       user: {
@@ -90,13 +96,13 @@ exports.register = async (req, res) => {
         profilePicture: user.profilePicture,
         bio: user.bio
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -105,14 +111,19 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // Decrypt request body if encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.iv && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    }
+    const { email, password } = requestBody;
 
     // Validate email & password
     if (!email || !password) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Please provide email and password'
-      });
+      }));
     }
 
     // Check for user
@@ -136,10 +147,10 @@ exports.login = async (req, res) => {
         userAgent: req.headers['user-agent'] || 'Unknown'
       });
 
-      return res.status(401).json({
+      return res.status(401).json(encryptResponse({
         success: false,
         message: 'Invalid credentials'
-      });
+      }));
     }
 
     // Check if password matches
@@ -164,10 +175,10 @@ exports.login = async (req, res) => {
         userAgent: req.headers['user-agent'] || 'Unknown'
       });
 
-      return res.status(401).json({
+      return res.status(401).json(encryptResponse({
         success: false,
         message: 'Invalid credentials'
-      });
+      }));
     }
 
 
@@ -199,7 +210,7 @@ exports.login = async (req, res) => {
       userAgent: req.headers['user-agent'] || 'Unknown'
     });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       token,
       user: {
@@ -210,13 +221,13 @@ exports.login = async (req, res) => {
         profilePicture: user.profilePicture,
         bio: user.bio
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -240,7 +251,7 @@ exports.getMe = async (req, res) => {
         }
       });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: {
         id: user._id,
@@ -253,13 +264,13 @@ exports.getMe = async (req, res) => {
         lastLoginLocation: user.lastLoginLocation,
         createdAt: user.createdAt
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -271,16 +282,16 @@ exports.refreshToken = async (req, res) => {
     const user = await User.findById(req.user.id).populate('role', 'name displayName');
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
-      });
+      }));
     }
 
     // Generate new token
     const token = user.getSignedJwtToken();
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       token,
       user: {
@@ -291,13 +302,13 @@ exports.refreshToken = async (req, res) => {
         profilePicture: user.profilePicture,
         bio: user.bio
       }
-    });
+    }));
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Server error'
-    });
+    }));
   }
 };
 
@@ -306,16 +317,21 @@ exports.refreshToken = async (req, res) => {
 // @access  Private
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, bio } = req.body;
+    // Decrypt request body if encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.iv && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    }
+    const { name, bio } = requestBody;
 
     // Find user
     let user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
-      });
+      }));
     }
 
 
@@ -327,7 +343,7 @@ exports.updateProfile = async (req, res) => {
     // Save user
     await user.save();
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       data: {
         id: user._id,
@@ -340,13 +356,13 @@ exports.updateProfile = async (req, res) => {
         lastLoginLocation: user.lastLoginLocation,
         createdAt: user.createdAt
       }
-    });
+    }));
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Failed to update profile. Please try again.'
-    });
+    }));
   }
 };
 
@@ -362,10 +378,10 @@ exports.uploadProfilePicture = async (req, res) => {
 
     if (!req.file) {
       console.log('No file found in request');
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Please upload an image file'
-      });
+      }));
     }
 
     // Get user
@@ -375,10 +391,10 @@ exports.uploadProfilePicture = async (req, res) => {
       // Remove uploaded file if user not found
       fs.unlinkSync(req.file.path);
 
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
-      });
+      }));
     }
 
     // If user already has a profile picture, delete the old one
@@ -412,7 +428,7 @@ exports.uploadProfilePicture = async (req, res) => {
     };
 
     console.log('Response data:', JSON.stringify(responseData));
-    res.status(200).json(responseData);
+    res.status(200).json(encryptResponse(responseData));
   } catch (error) {
     console.error('Profile picture upload error:', error);
 
@@ -421,10 +437,10 @@ exports.uploadProfilePicture = async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
 
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Failed to upload profile picture. Please try again.'
-    });
+    }));
   }
 };
 
@@ -433,22 +449,32 @@ exports.uploadProfilePicture = async (req, res) => {
 // @access  Public
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    // Decrypt request body if encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.iv && req.body.encrypted) {
+      try {
+        requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+      } catch (decryptError) {
+        console.error('Decryption failed, using plain body:', decryptError);
+        requestBody = req.body; // Fallback to plain if decryption fails
+      }
+    }
+    const { email } = requestBody;
 
     if (!email) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Please provide an email address'
-      });
+      }));
     }
 
     // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found with this email'
-      });
+      }));
     }
 
     // Generate OTP
@@ -467,16 +493,16 @@ exports.forgotPassword = async (req, res) => {
     // Send OTP via email
     await sendOTPEmail(email, otp);
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       message: 'OTP sent to your email'
-    });
+    }));
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Failed to send OTP. Please try again.'
-    });
+    }));
   }
 };
 
@@ -485,51 +511,56 @@ exports.forgotPassword = async (req, res) => {
 // @access  Public
 exports.verifyOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    // Decrypt request body if encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.iv && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    }
+    const { email, otp } = requestBody;
 
     if (!email || !otp) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Please provide email and OTP'
-      });
+      }));
     }
 
     // Find the OTP record
     const otpRecord = await OTP.findOne({ email });
 
     if (!otpRecord) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'OTP expired or not found. Please request a new one.'
-      });
+      }));
     }
 
     // Verify OTP
     if (!otpRecord.verifyOTP(otp)) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Invalid OTP'
-      });
+      }));
     }
 
     // OTP is valid, generate a temporary token for password reset
     const user = await User.findOne({ email });
-    const resetToken = user.getSignedJwtToken(15 * 60); // 15 minutes token
+    const resetToken = user.getSignedJwtToken(60 * 60); // 1 hour token
 
     // Delete the OTP record as it's been used
     await OTP.deleteOne({ _id: otpRecord._id });
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       message: 'OTP verified successfully',
       resetToken
-    });
+    }));
   } catch (error) {
     console.error('Verify OTP error:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Failed to verify OTP. Please try again.'
-    });
+    }));
   }
 };
 
@@ -538,23 +569,28 @@ exports.verifyOTP = async (req, res) => {
 // @access  Private (requires token from verifyOTP)
 exports.resetPassword = async (req, res) => {
   try {
-    const { password } = req.body;
+    // Decrypt request body if encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.iv && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    }
+    const { password } = requestBody;
 
     if (!password) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Please provide a new password'
-      });
+      }));
     }
 
     // Get user from the token
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
-      });
+      }));
     }
 
 
@@ -563,16 +599,16 @@ exports.resetPassword = async (req, res) => {
     user.password = password;
     await user.save();
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       message: 'Password reset successful'
-    });
+    }));
   } catch (error) {
     console.error('Reset password error:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Failed to reset password. Please try again.'
-    });
+    }));
   }
 };
 
@@ -581,13 +617,18 @@ exports.resetPassword = async (req, res) => {
 // @access  Private
 exports.changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    // Decrypt request body if encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.iv && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    }
+    const { currentPassword, newPassword } = requestBody;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({
+      return res.status(400).json(encryptResponse({
         success: false,
         message: 'Please provide current and new password'
-      });
+      }));
     }
 
     // Get user with password
@@ -596,10 +637,10 @@ exports.changePassword = async (req, res) => {
     // Check current password
     const isMatch = await user.matchPassword(currentPassword);
     if (!isMatch) {
-      return res.status(401).json({
+      return res.status(401).json(encryptResponse({
         success: false,
         message: 'Current password is incorrect'
-      });
+      }));
     }
 
 
@@ -608,15 +649,15 @@ exports.changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    res.status(200).json({
+    res.status(200).json(encryptResponse({
       success: true,
       message: 'Password changed successfully'
-    });
+    }));
   } catch (error) {
     console.error('Change password error:', error);
-    res.status(500).json({
+    res.status(500).json(encryptResponse({
       success: false,
       message: 'Failed to change password. Please try again.'
-    });
+    }));
   }
 };

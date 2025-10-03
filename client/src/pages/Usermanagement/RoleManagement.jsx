@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   Typography,
   Table,
@@ -33,14 +33,17 @@ import {
   CloseOutlined
 } from '@ant-design/icons';
 import Sidebar from '../../components/Sidebar';
+import AuthContext from '../../context/AuthContext';
 import { getRoles, createRole, updateRole, deleteRole } from '../../api/roleService';
 import { getPermissions } from '../../api/permissionService';
+import { isAdmin } from '../../utils/permissions';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const RoleManagement = () => {
   const { message } = App.useApp();
+  const { user } = useContext(AuthContext);
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -170,6 +173,11 @@ const RoleManagement = () => {
   };
 
   const handleStatusToggle = async (roleId, currentStatus) => {
+    if (!isAdmin(user)) {
+      message.error('Only admin users can toggle role status');
+      return;
+    }
+
     try {
       const newStatus = !currentStatus;
       await updateRole(roleId, { isActive: newStatus });
@@ -274,6 +282,7 @@ const RoleManagement = () => {
             checkedChildren="Enable"
             unCheckedChildren="Disable"
             size={isMobile ? 'small' : 'default'}
+            disabled={!isAdmin(user)}
           />
           <Tag color={isActive ? 'green' : 'red'} style={{ margin: 0 }}>
             {isActive ? 'Active' : 'Inactive'}

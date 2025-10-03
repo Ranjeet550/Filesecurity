@@ -40,10 +40,85 @@ const Profile = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const { message } = App.useApp();
 
-  // Custom CSS for avatar hover effect
+  // Custom CSS for avatar hover effect and responsive design
   const avatarOverlayStyle = `
     .avatar-upload-wrapper:hover .avatar-overlay {
       opacity: 1 !important;
+    }
+
+    /* Responsive styles */
+    @media (max-width: 768px) {
+      .profile-container {
+        max-width: 100% !important;
+        padding: 0 16px;
+      }
+
+      .profile-card {
+        padding: 16px !important;
+      }
+
+      .avatar-size {
+        width: 60px !important;
+        height: 60px !important;
+        font-size: 18px !important;
+      }
+
+      .profile-title {
+        font-size: 14px !important;
+      }
+
+      .profile-text {
+        font-size: 12px !important;
+      }
+
+      .form-label {
+        font-size: 13px !important;
+      }
+
+      .form-input {
+        font-size: 13px !important;
+      }
+
+      .button-small {
+        font-size: 11px !important;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .profile-container {
+        padding: 0 8px;
+      }
+
+      .profile-card {
+        padding: 12px !important;
+        margin-bottom: 16px;
+      }
+
+      .avatar-size {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 16px !important;
+      }
+
+      .profile-title {
+        font-size: 13px !important;
+      }
+
+      .profile-text {
+        font-size: 11px !important;
+      }
+
+      .form-label {
+        font-size: 12px !important;
+      }
+
+      .form-input {
+        font-size: 12px !important;
+      }
+
+      .button-small {
+        font-size: 10px !important;
+      }
     }
   `;
 
@@ -153,7 +228,7 @@ const Profile = () => {
       {/* Add style tag for custom CSS */}
       <style>{avatarOverlayStyle}</style>
 
-      <div className="profile-container" style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div className="profile-container" style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px' }}>
         
 
         <Row gutter={[16, 16]}>
@@ -180,6 +255,7 @@ const Profile = () => {
                       <Avatar
                         key={`${user?.profilePicture || 'default'}-${refreshKey}`}
                         size={80}
+                        className="avatar-size"
                         src={user?.profilePicture ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.profilePicture}?v=${refreshKey}` : null}
                         style={{
                           backgroundColor: user?.profilePicture ? 'transparent' : '#00BF96',
@@ -225,42 +301,44 @@ const Profile = () => {
                     onClick={handleProfilePictureUpload}
                     loading={uploading}
                     size="small"
+                    className="button-small"
                     style={{
                       marginTop: '6px',
                       borderRadius: '16px',
                       background: '#00BF96',
                       border: 'none',
-                      fontSize: '12px'
+                      fontSize: '12px',
+                      width: '100%'
                     }}
                   >
                     Upload New Picture
                   </Button>
                 )}
 
-                <Title level={5} style={{ marginTop: '12px', marginBottom: '2px', fontSize: '16px' }} key={`name-${refreshKey}`}>
+                <Title level={5} className="profile-title" style={{ marginTop: '12px', marginBottom: '2px', fontSize: '16px' }} key={`name-${refreshKey}`}>
                   {user?.name}
                 </Title>
-                <Text type="secondary" style={{ fontSize: '13px' }} key={`email-${refreshKey}`}>{user?.email}</Text>
+                <Text type="secondary" className="profile-text" style={{ fontSize: '13px' }} key={`email-${refreshKey}`}>{user?.email}</Text>
                
               </div>
 
               <Divider style={{ margin: '12px 0' }} />
 
               <div style={{ marginBottom: '10px' }}>
-                <Text type="secondary" style={{ display: 'block', marginBottom: '3px', fontSize: '12px' }}>
+                <Text type="secondary" className="profile-text" style={{ display: 'block', marginBottom: '3px', fontSize: '12px' }}>
                   <ClockCircleOutlined style={{ marginRight: '6px', fontSize: '12px' }} />
                   Last Login:
                 </Text>
-                <Text style={{ fontSize: '13px' }}>{formatDate(user?.lastLogin)}</Text>
+                <Text className="profile-text" style={{ fontSize: '13px' }}>{formatDate(user?.lastLogin)}</Text>
               </div>
 
               {user?.lastLoginLocation && (
                 <div>
-                  <Text type="secondary" style={{ display: 'block', marginBottom: '3px', fontSize: '12px' }}>
+                  <Text type="secondary" className="profile-text" style={{ display: 'block', marginBottom: '3px', fontSize: '12px' }}>
                     <EnvironmentOutlined style={{ marginRight: '6px', fontSize: '12px' }} />
                     Last Location:
                   </Text>
-                  <Text style={{ fontSize: '13px' }}>
+                  <Text className="profile-text" style={{ fontSize: '13px' }}>
                     {user.lastLoginLocation.city}, {user.lastLoginLocation.country}
                   </Text>
                 </div>
@@ -280,7 +358,7 @@ const Profile = () => {
               extra={
                 <Button
                   type={editing ? 'primary' : 'default'}
-                  icon={editing ? <SaveOutlined style={{ fontSize: '12px' }} /> : <EditOutlined style={{ fontSize: '12px' }} />}
+                  icon={editing ? <SaveOutlined className="button-small" style={{ fontSize: '12px' }} /> : <EditOutlined className="button-small" style={{ fontSize: '12px' }} />}
                   onClick={handleEditToggle}
                   className={editing ? 'gradient-button' : ''}
                   size="small"
@@ -313,7 +391,7 @@ const Profile = () => {
                 >
                   <Form.Item
                     name="name"
-                    label={<span style={{ fontSize: '14px' }}>Full Name</span>}
+                    label={<span className="form-label" style={{ fontSize: '14px' }}>Full Name</span>}
                     rules={[
                       { required: true, message: 'Please enter your name' },
                       { max: 50, message: 'Name cannot be longer than 50 characters' }
@@ -324,26 +402,28 @@ const Profile = () => {
                       prefix={<UserOutlined style={{ color: '#00BF96', fontSize: '14px' }} />}
                       placeholder="Your full name"
                       disabled={!editing}
+                      className="form-input"
                       style={{ fontSize: '14px' }}
                     />
                   </Form.Item>
 
                   <Form.Item
                     name="email"
-                    label={<span style={{ fontSize: '14px' }}>Email Address</span>}
+                    label={<span className="form-label" style={{ fontSize: '14px' }}>Email Address</span>}
                     style={{ marginBottom: '16px' }}
                   >
                     <Input
                       prefix={<MailOutlined style={{ color: '#00BF96', fontSize: '14px' }} />}
                       placeholder="Your email address"
                       disabled={true}
+                      className="form-input"
                       style={{ fontSize: '14px' }}
                     />
                   </Form.Item>
 
                   <Form.Item
                     name="bio"
-                    label={<span style={{ fontSize: '14px' }}>Bio</span>}
+                    label={<span className="form-label" style={{ fontSize: '14px' }}>Bio</span>}
                     rules={[
                       { max: 200, message: 'Bio cannot be longer than 200 characters' }
                     ]}
@@ -355,6 +435,7 @@ const Profile = () => {
                       disabled={!editing}
                       maxLength={200}
                       showCount
+                      className="form-input"
                       style={{ fontSize: '14px' }}
                     />
                   </Form.Item>
@@ -367,7 +448,7 @@ const Profile = () => {
                         className="gradient-button"
                         size="middle"
                         style={{
-                          width: '50%',
+                          width: '100%',
                           background: '#00BF96',
                           border: 'none',
                           boxShadow: '0 2px 6px rgba(0, 191, 150, 0.2)',

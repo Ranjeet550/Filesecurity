@@ -37,6 +37,7 @@ import {
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
 import { uploadFile } from '../../api/fileService';
+import { encryptFile } from '../../utils/fileEncryption';
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -114,8 +115,11 @@ const FileUpload = () => {
       setError(null);
       setCurrentStep(1);
 
+      // Encrypt the file on the client side
+      const encryptedBlob = await encryptFile(file, currentPassword);
+
       // Create a custom file object with password
-      const fileWithPassword = new File([file], file.name, {
+      const fileWithPassword = new File([encryptedBlob], file.name, {
         type: file.type,
         lastModified: file.lastModified
       });
@@ -127,7 +131,7 @@ const FileUpload = () => {
       console.log('Upload response:', response);
 
       if (response && response.data) {
-        setUploadedFile(response.data);
+        setUploadedFile({...response.data, password: currentPassword});
         setFileList([]);
         setCurrentStep(2);
         message.success('File uploaded successfully');

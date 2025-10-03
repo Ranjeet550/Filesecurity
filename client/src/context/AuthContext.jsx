@@ -1,8 +1,10 @@
 import { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { getLocationData } from '../api/fileService';
-import { updateProfile, uploadProfilePicture } from '../api/profileService';
+import { updateProfile, uploadProfilePicture, getProfile } from '../api/profileService';
 import { AUTH_API_URL } from '../config';
+import { decryptResponse } from '../utils/responseDecryption';
+import { encryptRequest } from '../utils/requestEncryption';
 
 const AuthContext = createContext();
 
@@ -30,9 +32,9 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const res = await axios.get(`${AUTH_API_URL}/me`);
-        setUser(res.data.data);
-        localStorage.setItem('user', JSON.stringify(res.data.data));
+        const res = await getProfile();
+        setUser(res.data);
+        localStorage.setItem('user', JSON.stringify(res.data));
         setLoading(false);
       } catch (err) {
         console.error('Error loading user:', err);
@@ -66,14 +68,23 @@ export const AuthProvider = ({ children }) => {
         country: location.country
       };
 
-      const res = await axios.post(`${AUTH_API_URL}/register`, requestData);
+      // Encrypt the request data
+      const encryptedData = await encryptRequest(requestData);
 
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setToken(res.data.token);
-      setUser(res.data.user);
+      const res = await axios.post(`${AUTH_API_URL}/register`, encryptedData);
+
+      // Decrypt if encrypted
+      let responseData = res.data;
+      if (responseData.encrypted) {
+        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+      }
+
+      localStorage.setItem('token', responseData.token);
+      localStorage.setItem('user', JSON.stringify(responseData.user));
+      setToken(responseData.token);
+      setUser(responseData.user);
       setLoading(false);
-      return res.data;
+      return responseData;
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
       setLoading(false);
@@ -100,14 +111,23 @@ export const AuthProvider = ({ children }) => {
         country: location.country
       };
 
-      const res = await axios.post(`${AUTH_API_URL}/login`, requestData);
+      // Encrypt the request data
+      const encryptedData = await encryptRequest(requestData);
 
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setToken(res.data.token);
-      setUser(res.data.user);
+      const res = await axios.post(`${AUTH_API_URL}/login`, encryptedData);
+
+      // Decrypt if encrypted
+      let responseData = res.data;
+      if (responseData.encrypted) {
+        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+      }
+
+      localStorage.setItem('token', responseData.token);
+      localStorage.setItem('user', JSON.stringify(responseData.user));
+      setToken(responseData.token);
+      setUser(responseData.user);
       setLoading(false);
-      return res.data;
+      return responseData;
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
       setLoading(false);
