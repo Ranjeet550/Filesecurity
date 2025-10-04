@@ -36,7 +36,7 @@ const Sidebar = ({ children }) => {
       ? '/all-files'
       : location.pathname;
 
-    console.log('Active menu key:', activeKey, 'Path:', location.pathname, 'Search:', location.search);
+   
     return activeKey;
   };
 

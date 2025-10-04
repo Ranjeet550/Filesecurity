@@ -101,14 +101,7 @@ const FileUpload = () => {
 
     const file = fileList[0].originFileObj;
 
-    // Log file details for debugging
-    console.log('File to upload:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      lastModified: new Date(file.lastModified).toISOString(),
-      password: currentPassword
-    });
+    
 
     try {
       setUploading(true);
@@ -128,7 +121,7 @@ const FileUpload = () => {
       fileWithPassword.password = currentPassword;
 
       const response = await uploadFile(fileWithPassword);
-      console.log('Upload response:', response);
+     
 
       if (response && response.data) {
         setUploadedFile({...response.data, password: currentPassword});
@@ -184,12 +177,7 @@ const FileUpload = () => {
     },
     beforeUpload: (file) => {
       // Log file details for debugging
-      console.log('File selected:', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        lastModified: new Date(file.lastModified).toISOString()
-      });
+      
 
       setFileList([
         {

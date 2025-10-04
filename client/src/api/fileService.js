@@ -143,7 +143,7 @@ export const uploadFile = async (file) => {
       throw new Error('No file provided');
     }
 
-    console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
+ 
 
     const location = await getLocationData();
     const token = getAuthToken();
@@ -158,20 +158,10 @@ export const uploadFile = async (file) => {
     formData.append('city', location.city);
     formData.append('country', location.country);
 
-    // Log the form data for debugging
-    console.log('FormData contents:');
-    for (let [key, value] of formData.entries()) {
-      console.log(`Form data: ${key} = ${value instanceof File ? value.name : value}`);
-    }
+   
+   
     
-    // Also log the file object to see if password is attached
-    console.log('File object being uploaded:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      hasPassword: !!file.password,
-      password: file.password
-    });
+   
 
     const response = await axios.post(`${FILES_API_URL}/upload`, formData, {
       headers: {
@@ -336,7 +326,7 @@ export const downloadFile = async (fileId, password, originalName = null) => {
       const contentType = response.headers['content-type'] || 'application/octet-stream';
       const extension = contentType.split('/')[1] || 'bin';
       filename = `download.${extension}`;
-      console.log('Using generic filename with extension:', filename);
+     
     }
 
     // Set download attribute to force download instead of navigation
@@ -361,13 +351,13 @@ export const downloadFile = async (fileId, password, originalName = null) => {
     setTimeout(() => {
       // Dispatch the event instead of using click()
       const clickResult = link.dispatchEvent(clickEvent);
-      console.log('Click event dispatched, result:', clickResult);
+     
 
       // Clean up
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
         link.remove();
-        console.log('Download link removed and URL revoked');
+       
       }, 100);
     }, 0);
 
