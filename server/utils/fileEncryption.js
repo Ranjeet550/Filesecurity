@@ -10,6 +10,34 @@ const readFileAsync = promisify(fs.readFile);
 const writeFileAsync = promisify(fs.writeFile);
 
 /**
+ * XOR encryption/decryption implementation
+ * @param {Uint8Array} data - The data to encrypt/decrypt
+ * @param {string} password - The password to use
+ * @returns {Uint8Array} - The encrypted/decrypted data
+ */
+function xorEncrypt(data, password) {
+  // Convert password to UTF-8 bytes
+  const encoder = new TextEncoder();
+  const passwordBytes = encoder.encode(password);
+
+  // Create a key of the desired length by repeating the password bytes
+  const key = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    key[i] = passwordBytes[i % passwordBytes.length];
+  }
+
+  // Create a new Uint8Array for the result
+  const result = new Uint8Array(data.length);
+
+  // XOR each byte with the corresponding byte in the key
+  for (let i = 0; i < data.length; i++) {
+    result[i] = data[i] ^ key[i];
+  }
+
+  return result;
+}
+
+/**
  * Encrypts a file with a password and creates a self-extracting HTML file
  * @param {string} filePath - Path to the file to encrypt
  * @param {string} password - Password to encrypt the file with
@@ -19,26 +47,11 @@ const writeFileAsync = promisify(fs.writeFile);
  */
 exports.encryptFile = async (filePath, password, originalName, mimeType) => {
   try {
-    // Read the file
+    // Read the file (already encrypted from client)
     const fileData = await readFileAsync(filePath);
 
-    // Create a buffer for encryption
-    const iv = crypto.randomBytes(16);
-
-    // Derive key from password using SHA-256 (to match browser's crypto.subtle API)
-    const hash = crypto.createHash('sha256').update(password).digest();
-    const key = hash.slice(0, 32); // Use first 32 bytes for AES-256
-
-    // Encrypt the file
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    const encryptedData = Buffer.concat([
-      iv,
-      cipher.update(fileData),
-      cipher.final()
-    ]);
-
-    // Convert encrypted data to base64
-    const encryptedBase64 = encryptedData.toString('base64');
+    // Convert to base64 (no additional encryption needed)
+    const encryptedBase64 = fileData.toString('base64');
 
     // Create a self-extracting HTML file
     const htmlFilePath = path.join(
@@ -231,38 +244,10 @@ function createSelfExtractingHtml(fileName, mimeType, encryptedBase64) {
         }
 
         // Update progress
-        progressBarElement.style.width = '50%';
-
-        // Extract the IV from the first 16 bytes
-        const iv = bytes.slice(0, 16);
-
-        // The rest is the encrypted data
-        const data = bytes.slice(16);
-
-        // Update progress
         progressBarElement.style.width = '70%';
 
-        // Derive key from password
-        const encoder = new TextEncoder();
-        const passwordData = encoder.encode(password);
-        const hash = await window.crypto.subtle.digest('SHA-256', passwordData);
-        const key = await window.crypto.subtle.importKey(
-          'raw',
-          hash.slice(0, 32),
-          { name: 'AES-CBC' },
-          false,
-          ['decrypt']
-        );
-
-        // Update progress
-        progressBarElement.style.width = '80%';
-
-        // Decrypt the data
-        const decryptedData = await window.crypto.subtle.decrypt(
-          { name: 'AES-CBC', iv },
-          key,
-          data
-        );
+        // XOR decrypt the data
+        const decryptedData = xorEncrypt(bytes, password);
 
         // Update progress
         progressBarElement.style.width = '90%';
@@ -298,6 +283,60 @@ function createSelfExtractingHtml(fileName, mimeType, encryptedBase64) {
         document.getElementById('password').value = '';
       }
     });
+
+    // XOR encryption/decryption function
+    exports.xorEncrypt = function(data, password) {
+      // Convert password to UTF-8 bytes
+      const encoder = new TextEncoder();
+      const passwordBytes = encoder.encode(password);
+    
+      // Create a key of the desired length by repeating the password bytes
+      const key = new Uint8Array(data.length);
+      for (let i = 0; i < data.length; i++) {
+        key[i] = passwordBytes[i % passwordBytes.length];
+      }
+    
+      // Create a new Uint8Array for the result
+      const result = new Uint8Array(data.length);
+    
+      // XOR each byte with the corresponding byte in the key
+      for (let i = 0; i < data.length; i++) {
+        result[i] = data[i] ^ key[i];
+      }
+    
+      return result;
+    };
+    
+    exports.xorDecrypt = exports.xorEncrypt; // XOR is symmetric
+    
+    function xorEncrypt(data, password) {
+      // Generate key from password
+      const key = generateKeyFromPassword(password, data.length);
+
+      // Create result array
+      const result = new Uint8Array(data.length);
+
+      // XOR each byte
+      for (let i = 0; i < data.length; i++) {
+        result[i] = data[i] ^ key[i % key.length];
+      }
+
+      return result;
+    }
+
+    // Generate key from password
+    function generateKeyFromPassword(password, length) {
+      // Convert password to UTF-8 bytes
+      const passwordBytes = new TextEncoder().encode(password);
+
+      // Create a key of the desired length
+      const key = new Uint8Array(length);
+      for (let i = 0; i < length; i++) {
+        key[i] = passwordBytes[i % passwordBytes.length];
+      }
+
+      return key;
+    }
 
     // Function to display file content based on type
     function displayFileContent(blob, fileName, mimeType) {

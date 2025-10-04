@@ -101,18 +101,27 @@ const FileUpload = () => {
 
     const file = fileList[0].originFileObj;
 
-    
-
     try {
       setUploading(true);
       setError(null);
       setCurrentStep(1);
 
-      // Encrypt the file on the client side
-      const encryptedBlob = await encryptFile(file, currentPassword);
+      // Check if file is PDF or Excel - don't encrypt these as server will protect them
+      const isPDF = file.type === 'application/pdf';
+      const isxlsx = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                      file.type === 'application/vnd.ms-excel';
+
+      let fileToUpload;
+      if (isPDF || isxlsx) {
+        // For PDF/Excel, upload original file - server will apply password protection
+        fileToUpload = file;
+      } else {
+        // For other files, encrypt on client side
+        fileToUpload = await encryptFile(file, currentPassword);
+      }
 
       // Create a custom file object with password
-      const fileWithPassword = new File([encryptedBlob], file.name, {
+      const fileWithPassword = new File([fileToUpload], file.name, {
         type: file.type,
         lastModified: file.lastModified
       });

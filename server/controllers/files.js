@@ -26,6 +26,7 @@ const { logActivity } = require('../middleware/logger');
 const { encryptFile } = require('../utils/fileEncryption');
 const { protectUploadedPDF, protectUploadedExcel } = require('../utils/pdfProtection');
 const { encryptResponse } = require('../utils/responseEncryption');
+const { xorDecrypt } = require('../utils/fileEncryption');
 
 // @desc    Upload a file
 // @route   POST /api/files/upload
@@ -113,6 +114,7 @@ exports.uploadFile = async (req, res) => {
     let finalFilePath = normalizedPath;
     let finalFilename = uploadedFile.filename;
     let finalSize = uploadedFile.size;
+
 
     if (mimeType === 'application/pdf') {
       try {
@@ -565,45 +567,34 @@ exports.downloadFile = async (req, res) => {
         // Send the password-protected Excel file directly
         fs.createReadStream(absolutePath).pipe(res);
       } else {
-        // For non-PDF files, use the existing encryption method
-        console.log('Encrypting non-PDF file with password:', password);
-        const encryptedFilePath = await encryptFile(
-          absolutePath,
-          password,
-          file.originalName,
-          mimeType
-        );
-        console.log('Encrypted file created at:', encryptedFilePath);
+        // For non-PDF files, decrypt and send the original file
+        console.log('Decrypting and sending original file');
+
+        // Read the encrypted file
+        const encryptedBuffer = fs.readFileSync(absolutePath);
+        const encryptedArray = new Uint8Array(encryptedBuffer);
+
+        // Decrypt with XOR
+        const decryptedArray = xorDecrypt(encryptedArray, password);
+        const decryptedBuffer = Buffer.from(decryptedArray);
 
         // Always use the original filename for download
         const otherFilename = file.originalName;
 
-        // Set headers to force download and prevent navigation
+        // Set headers to force download
         res.setHeader('Content-Disposition', `attachment; filename="${otherFilename}"`);
-        res.setHeader('Content-Type', 'text/html');
+        res.setHeader('Content-Type', mimeType || 'application/octet-stream');
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Pragma', 'no-cache');
 
         // Log all headers for debugging
         console.log('Response headers:', res.getHeaders());
-        console.log('Other file filename being sent:', otherFilename);
-        console.log('Other file originalName from DB:', file.originalName);
+        console.log('Decrypted filename being sent:', otherFilename);
+        console.log('Original filename from DB:', file.originalName);
 
-        // Send the encrypted file
-        fs.createReadStream(encryptedFilePath).pipe(res);
-
-        // Delete the encrypted file after sending
-        res.on('finish', () => {
-          try {
-            if (fs.existsSync(encryptedFilePath)) {
-              fs.unlinkSync(encryptedFilePath);
-              console.log('Temporary encrypted file deleted:', encryptedFilePath);
-            }
-          } catch (error) {
-            console.error('Error deleting temporary encrypted file:', error);
-          }
-        });
+        // Send the decrypted file
+        res.send(decryptedBuffer);
       }
     } catch (error) {
       console.error('Error processing file for download:', error);
