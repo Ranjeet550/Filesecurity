@@ -23,7 +23,7 @@ const authAxios = () => {
   instance.interceptors.response.use(
     async (response) => {
       if (response.data && response.data.encrypted) {
-        response.data = await decryptResponse(response.data.iv, response.data.encrypted);
+        response.data = await decryptResponse(response.data.encrypted);
       }
       return response;
     },

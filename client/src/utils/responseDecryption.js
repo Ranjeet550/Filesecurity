@@ -1,7 +1,7 @@
 const RESPONSE_KEY = 'mySecretKeyForResponses';
+const FIXED_IV = new Uint8Array(16).fill(0); // Fixed IV
 
-const decryptResponse = async (ivHex, encryptedHex) => {
-  const iv = new Uint8Array(ivHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+const decryptResponse = async (encryptedHex) => {
   const encrypted = new Uint8Array(encryptedHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
   const keyData = new TextEncoder().encode(RESPONSE_KEY);
   const hash = await crypto.subtle.digest('SHA-256', keyData);
@@ -14,7 +14,7 @@ const decryptResponse = async (ivHex, encryptedHex) => {
     ['decrypt']
   );
   const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-CBC', iv: iv },
+    { name: 'AES-CBC', iv: FIXED_IV },
     aesKey,
     encrypted
   );

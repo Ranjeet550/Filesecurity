@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
       // Decrypt if encrypted
       let responseData = res.data;
       if (responseData.encrypted) {
-        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+        responseData = await decryptResponse(responseData.encrypted);
       }
 
       localStorage.setItem('token', responseData.token);
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
       // Decrypt if encrypted
       let responseData = res.data;
       if (responseData.encrypted) {
-        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+        responseData = await decryptResponse(responseData.encrypted);
       }
 
       localStorage.setItem('token', responseData.token);

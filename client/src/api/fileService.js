@@ -44,7 +44,7 @@ const authAxios = () => {
   instance.interceptors.response.use(
     async (response) => {
       if (response.data && response.data.encrypted) {
-        response.data = await decryptResponse(response.data.iv, response.data.encrypted);
+        response.data = await decryptResponse(response.data.encrypted);
       }
       return response;
     },
@@ -174,7 +174,7 @@ export const uploadFile = async (file) => {
     let data = response.data;
     if (data && data.encrypted) {
       try {
-        data = await decryptResponse(data.iv, data.encrypted);
+        data = await decryptResponse(data.encrypted);
       } catch (decryptError) {
         console.error('Response decryption failed:', decryptError);
         // Fallback to encrypted data if decryption fails

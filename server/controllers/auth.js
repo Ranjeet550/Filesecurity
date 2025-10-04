@@ -113,8 +113,8 @@ exports.login = async (req, res) => {
   try {
     // Decrypt request body if encrypted
     let requestBody = req.body;
-    if (req.body && req.body.iv && req.body.encrypted) {
-      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    if (req.body && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.encrypted);
     }
     const { email, password } = requestBody;
 
@@ -319,8 +319,8 @@ exports.updateProfile = async (req, res) => {
   try {
     // Decrypt request body if encrypted
     let requestBody = req.body;
-    if (req.body && req.body.iv && req.body.encrypted) {
-      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    if (req.body && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.encrypted);
     }
     const { name, bio } = requestBody;
 
@@ -451,9 +451,9 @@ exports.forgotPassword = async (req, res) => {
   try {
     // Decrypt request body if encrypted
     let requestBody = req.body;
-    if (req.body && req.body.iv && req.body.encrypted) {
+    if (req.body && req.body.encrypted) {
       try {
-        requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+        requestBody = decryptRequest(req.body.encrypted);
       } catch (decryptError) {
         console.error('Decryption failed, using plain body:', decryptError);
         requestBody = req.body; // Fallback to plain if decryption fails
@@ -513,8 +513,8 @@ exports.verifyOTP = async (req, res) => {
   try {
     // Decrypt request body if encrypted
     let requestBody = req.body;
-    if (req.body && req.body.iv && req.body.encrypted) {
-      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    if (req.body && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.encrypted);
     }
     const { email, otp } = requestBody;
 
@@ -571,8 +571,8 @@ exports.resetPassword = async (req, res) => {
   try {
     // Decrypt request body if encrypted
     let requestBody = req.body;
-    if (req.body && req.body.iv && req.body.encrypted) {
-      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    if (req.body && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.encrypted);
     }
     const { password } = requestBody;
 
@@ -619,8 +619,8 @@ exports.changePassword = async (req, res) => {
   try {
     // Decrypt request body if encrypted
     let requestBody = req.body;
-    if (req.body && req.body.iv && req.body.encrypted) {
-      requestBody = decryptRequest(req.body.iv, req.body.encrypted);
+    if (req.body && req.body.encrypted) {
+      requestBody = decryptRequest(req.body.encrypted);
     }
     const { currentPassword, newPassword } = requestBody;
 

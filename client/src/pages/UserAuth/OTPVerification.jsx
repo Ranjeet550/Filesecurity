@@ -74,7 +74,7 @@ const OTPVerification = () => {
       // Decrypt response if encrypted
       let responseData = response.data;
       if (responseData && responseData.encrypted) {
-        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+        responseData = await decryptResponse(responseData.encrypted);
       }
 
       // Store the reset token
@@ -89,7 +89,7 @@ const OTPVerification = () => {
       if (err.response?.data) {
         if (err.response.data.encrypted) {
           try {
-            const decryptedError = await decryptResponse(err.response.data.iv, err.response.data.encrypted);
+            const decryptedError = await decryptResponse(err.response.data.encrypted);
             errorMessage = decryptedError.message || errorMessage;
           } catch (decryptErr) {
             errorMessage = err.response.data.message || errorMessage;
@@ -117,7 +117,7 @@ const OTPVerification = () => {
       // Decrypt response if encrypted
       let responseData = res.data;
       if (responseData && responseData.encrypted) {
-        responseData = await decryptResponse(responseData.iv, responseData.encrypted);
+        responseData = await decryptResponse(responseData.encrypted);
       }
 
       message.success('New OTP sent to your email');

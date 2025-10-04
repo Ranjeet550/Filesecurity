@@ -1,7 +1,7 @@
 const REQUEST_KEY = 'mySecretKeyForResponses';
+const FIXED_IV = new Uint8Array(16).fill(0); // Fixed IV
 
 const encryptRequest = async (data) => {
-  const iv = window.crypto.getRandomValues(new Uint8Array(16));
   const key = new Uint8Array(32);
   const keyData = new TextEncoder().encode(REQUEST_KEY);
   key.set(keyData.slice(0, 32));
@@ -13,12 +13,11 @@ const encryptRequest = async (data) => {
     ['encrypt']
   );
   const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-CBC', iv: iv },
+    { name: 'AES-CBC', iv: FIXED_IV },
     aesKey,
     new TextEncoder().encode(JSON.stringify(data))
   );
   return {
-    iv: Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join(''),
     encrypted: Array.from(new Uint8Array(encrypted)).map(b => b.toString(16).padStart(2, '0')).join('')
   };
 };
