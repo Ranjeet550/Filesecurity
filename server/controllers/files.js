@@ -260,6 +260,15 @@ exports.getFiles = async (req, res) => {
 
     const files = await filesQuery;
 
+    // For non-admin users, filter downloads to only show their own downloads
+    if (!isAdmin) {
+      files.forEach(file => {
+        if (file.downloads && Array.isArray(file.downloads)) {
+          file.downloads = file.downloads.filter(download => download.user && download.user.toString() === req.user.id);
+        }
+      });
+    }
+
     res.status(200).json(encryptResponse({
       success: true,
       count: files.length,
