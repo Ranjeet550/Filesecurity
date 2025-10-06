@@ -67,6 +67,26 @@ const FileSchema = new mongoose.Schema({
       }
     }
   ],
+  QPdetails: {
+    type: String,
+    trim: true
+  },
+  Subcourse: {
+    type: String,
+    trim: true
+  },
+  subject: {
+    type: String,
+    trim: true
+  },
+  session: {
+    type: String,
+    trim: true
+  },
+  semyear: {
+    type: String,
+    trim: true
+  },
   createdAt: {
     type: Date,
     default: Date.now

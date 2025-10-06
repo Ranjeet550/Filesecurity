@@ -51,6 +51,11 @@ export function exportFilesToExcel(
       'Downloads': downloadsCount,
       // 'Type': row.mimetype || '', // Removed as requested
       'Uploaded By': row.uploadedBy?.name || row.uploadedBy?.email || '',
+      'QP Details': row.QPdetails || '',
+      'Subcourse': row.Subcourse || '',
+      'Subject': row.subject || '',
+      'Session': row.session || '',
+      'Sem/Year': row.semyear || '',
     };
     // Only add Assigned To and Password for admin
     if (isAdmin) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   Typography,
   Upload,
@@ -38,12 +38,14 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
 import { uploadFile } from '../../api/fileService';
 import { encryptFile } from '../../utils/fileEncryption';
+import AuthContext from '../../context/AuthContext';
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
 const FileUpload = () => {
   const { message } = App.useApp();
+  const { user } = useContext(AuthContext);
   const [fileList, setFileList] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -52,6 +54,13 @@ const FileUpload = () => {
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [useCustomPassword, setUseCustomPassword] = useState(false);
   const [customPassword, setCustomPassword] = useState('');
+
+  // Additional file details for admin
+  const [QPdetails, setQPdetails] = useState('');
+  const [Subcourse, setSubcourse] = useState('');
+  const [subject, setSubject] = useState('');
+  const [session, setSession] = useState('');
+  const [semyear, setSemyear] = useState('');
 
   // Function to generate a 10-character alphanumeric password with special characters
   const generatePassword = () => {
@@ -126,8 +135,13 @@ const FileUpload = () => {
         lastModified: file.lastModified
       });
 
-      // Add password to the file object for the upload service
+      // Add password and additional details to the file object for the upload service
       fileWithPassword.password = currentPassword;
+      fileWithPassword.QPdetails = QPdetails;
+      fileWithPassword.Subcourse = Subcourse;
+      fileWithPassword.subject = subject;
+      fileWithPassword.session = session;
+      fileWithPassword.semyear = semyear;
 
       const response = await uploadFile(fileWithPassword);
      
@@ -663,6 +677,88 @@ const FileUpload = () => {
                   </Text>
                 </div>
               </Card>
+
+              {/* Additional File Details Section (Admin Only) */}
+              {user?.role?.name === 'admin' && (
+                <Card
+                  size="small"
+                  style={{
+                    marginBottom: '16px',
+                    borderRadius: '6px',
+                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%)',
+                    border: '1px solid #91d5ff'
+                  }}
+                  title={
+                    <span style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+                      <FileProtectOutlined style={{ marginRight: '6px', color: '#1890ff' }} />
+                      Paper Details
+                    </span>
+                  }
+                >
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={8}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>QP Details</Text>
+                        <Input
+                          value={QPdetails}
+                          onChange={(e) => setQPdetails(e.target.value)}
+                          placeholder="Enter QP details"
+                          size="small"
+                          style={{ marginTop: '4px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Subcourse</Text>
+                        <Input
+                          value={Subcourse}
+                          onChange={(e) => setSubcourse(e.target.value)}
+                          placeholder="Enter subcourse"
+                          size="small"
+                          style={{ marginTop: '4px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Subject</Text>
+                        <Input
+                          value={subject}
+                          onChange={(e) => setSubject(e.target.value)}
+                          placeholder="Enter subject"
+                          size="small"
+                          style={{ marginTop: '4px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Session</Text>
+                        <Input
+                          value={session}
+                          onChange={(e) => setSession(e.target.value)}
+                          placeholder="Enter session"
+                          size="small"
+                          style={{ marginTop: '4px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Sem/Year</Text>
+                        <Input
+                          value={semyear}
+                          onChange={(e) => setSemyear(e.target.value)}
+                          placeholder="Enter semester/year"
+                          size="small"
+                          style={{ marginTop: '4px' }}
+                        />
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
+              )}
 
               <div style={{ textAlign: 'center', marginTop: '16px' }}>
                 <Button

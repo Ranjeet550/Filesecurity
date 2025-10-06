@@ -158,6 +158,13 @@ export const uploadFile = async (file) => {
     formData.append('city', location.city);
     formData.append('country', location.country);
 
+    // Add additional file details
+    if (file.QPdetails) formData.append('QPdetails', file.QPdetails);
+    if (file.Subcourse) formData.append('Subcourse', file.Subcourse);
+    if (file.subject) formData.append('subject', file.subject);
+    if (file.session) formData.append('session', file.session);
+    if (file.semyear) formData.append('semyear', file.semyear);
+
    
    
     

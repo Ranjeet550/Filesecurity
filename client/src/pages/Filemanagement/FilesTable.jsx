@@ -203,10 +203,20 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           ? file.uploadedBy.name.toLowerCase()
           : '';
         const fileExtension = fileName.split('.').pop() || '';
+        const qpDetails = (file.QPdetails || '').toLowerCase();
+        const subcourse = (file.Subcourse || '').toLowerCase();
+        const subject = (file.subject || '').toLowerCase();
+        const session = (file.session || '').toLowerCase();
+        const semyear = (file.semyear || '').toLowerCase();
         return (
           fileName.includes(searchLower) ||
           uploadedByName.includes(searchLower) ||
-          fileExtension.includes(searchLower)
+          fileExtension.includes(searchLower) ||
+          qpDetails.includes(searchLower) ||
+          subcourse.includes(searchLower) ||
+          subject.includes(searchLower) ||
+          session.includes(searchLower) ||
+          semyear.includes(searchLower)
         );
       });
     })();
@@ -345,6 +355,56 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       render: (_, __, index) => (currentPage - 1) * pageSize + index + 1,
       width: '80px',
       fixed: 'left',
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: 'QP Details',
+      dataIndex: 'QPdetails',
+      key: 'QPdetails',
+      render: (text) => text || '-',
+      ellipsis: true,
+      width: '120px',
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: 'Subcourse',
+      dataIndex: 'Subcourse',
+      key: 'Subcourse',
+      render: (text) => text || '-',
+      ellipsis: true,
+      width: '120px',
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: 'Subject',
+      dataIndex: 'subject',
+      key: 'subject',
+      render: (text) => text || '-',
+      ellipsis: true,
+      width: '120px',
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: 'Session',
+      dataIndex: 'session',
+      key: 'session',
+      render: (text) => text || '-',
+      ellipsis: true,
+      width: '100px',
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: 'Sem/Year',
+      dataIndex: 'semyear',
+      key: 'semyear',
+      render: (text) => text || '-',
+      ellipsis: true,
+      width: '100px',
       onHeaderCell: () => ({ style: tableStyles.headerCell }),
       onCell: () => ({ style: tableStyles.bodyCell }),
     },
@@ -693,7 +753,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                   exportFilesToExcel(filteredFiles, {
                     filename: 'files_report.xlsx',
                     userMap,
-                    isAdmin
+                    isAdmin,
+                    includeDetails: true
                   });
                 }}
               >

@@ -47,6 +47,13 @@ exports.uploadFile = async (req, res) => {
       city: req.body.city || 'Unknown',
       country: req.body.country || 'Unknown'
     };
+
+    // Extract additional file details
+    const QPdetails = req.body.QPdetails || '';
+    const Subcourse = req.body.Subcourse || '';
+    const subject = req.body.subject || '';
+    const session = req.body.session || '';
+    const semyear = req.body.semyear || '';
     console.log('Location data extracted:', userLocation);
 
     if (!req.files || !req.files.file || req.files.file.length === 0) {
@@ -188,7 +195,12 @@ exports.uploadFile = async (req, res) => {
       password: password,
       uploadedBy: req.user.id,
       uploadLocation: userLocation,
-      status: 'Pending'
+      status: 'Pending',
+      QPdetails: QPdetails,
+      Subcourse: Subcourse,
+      subject: subject,
+      session: session,
+      semyear: semyear
     });
 
     // Log file upload activity
@@ -239,7 +251,7 @@ exports.getFiles = async (req, res) => {
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
 
-    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy status';
+    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy status QPdetails Subcourse subject session semyear';
     if (isAdmin) {
       // Include password for admin users
       selectFields += ' password';
