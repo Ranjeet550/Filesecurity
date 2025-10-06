@@ -235,15 +235,20 @@ exports.uploadFile = async (req, res) => {
 exports.getFiles = async (req, res) => {
   try {
     let query = {};
-  let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy status';
     // Always populate uploadedBy with name/email for all users
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
 
+    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy status';
     if (isAdmin) {
-      // Admin can see all files
-      query = {}; // No filter - get all files
-      console.log('Admin user requesting all files');
+      // Include password for admin users
+      selectFields += ' password';
+    }
+
+    if (isAdmin) {
+      // Admin can only see files uploaded by them
+      query = { uploadedBy: req.user.id };
+      console.log('Admin user requesting their uploaded files');
     } else {
       // Regular users can only see files assigned to them or uploaded by them
       query = { $or: [
