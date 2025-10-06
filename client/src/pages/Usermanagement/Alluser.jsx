@@ -323,7 +323,6 @@ const UserManagement = () => {
               shape={isMobile ? 'default' : 'circle'}
               size={isMobile ? 'small' : 'middle'}
               className="gradient-button"
-              disabled={record.role?.name === 'admin' || record.role === 'admin'}
             >
               {isMobile && 'Edit'}
             </Button>
@@ -342,7 +341,6 @@ const UserManagement = () => {
                 icon={<DeleteOutlined />}
                 shape={isMobile ? 'default' : 'circle'}
                 size={isMobile ? 'small' : 'middle'}
-                disabled={record.role?.name === 'admin' || record.role === 'admin'}
               >
                 {isMobile && 'Delete'}
               </Button>

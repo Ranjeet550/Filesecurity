@@ -52,9 +52,10 @@ export function exportFilesToExcel(
       // 'Type': row.mimetype || '', // Removed as requested
       'Uploaded By': row.uploadedBy?.name || row.uploadedBy?.email || '',
     };
-    // Only add Assigned To for admin
+    // Only add Assigned To and Password for admin
     if (isAdmin) {
       base['Assigned To'] = assignedToNames;
+      base['Password'] = row.password || '';
     }
     return base;
   };
