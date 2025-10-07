@@ -199,8 +199,31 @@ const FileUpload = () => {
       setFileList([]);
     },
     beforeUpload: (file) => {
+      // Define allowed file types and max size
+      const allowedTypes = [
+        'application/pdf', // PDF
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+        'application/msword', // .doc
+        'application/zip' // .zip
+      ];
+      const maxSize = 10 * 1024 * 1024; // 10 MB
+
+      // Check file type
+      if (!allowedTypes.includes(file.type)) {
+        message.error('Invalid file type. Only PDF, Excel (.xlsx/.xls), Word (.docx/.doc), and ZIP files are allowed.');
+        return false;
+      }
+
+      // Check file size
+      if (file.size > maxSize) {
+        message.error('File size exceeds 10 MB limit. Please select a smaller file.');
+        return false;
+      }
+
       // Log file details for debugging
-      
+
 
       setFileList([
         {
