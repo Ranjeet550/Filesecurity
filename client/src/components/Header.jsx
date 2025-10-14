@@ -63,6 +63,7 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
     <div
       className="app-header"
       style={{
+        margin: 0,
         padding: '0 24px',
         background: 'linear-gradient(180deg, #1a2141 0%, #141937 100%)',
         boxShadow: '4px 0 20px rgba(0, 0, 0, 0.15)',
@@ -71,14 +72,14 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
         alignItems: 'center',
         height: '64px',
         minHeight: '64px',
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
-        left: 0,
+        left: screens.md ? (collapsed ? 80 : 250) : 0,
         right: 0,
         zIndex: 100,
         borderRight: '2px solid rgba(255, 255, 255, 0.1)',
         transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)',
-        width: '100%'
+        width: screens.md ? `calc(100% - ${collapsed ? 80 : 250}px)` : '100%'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center' }}>

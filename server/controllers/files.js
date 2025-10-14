@@ -73,6 +73,8 @@ exports.uploadFile = async (req, res) => {
     const subject = metadata.subject || req.body.subject || '';
     const session = metadata.session || req.body.session || '';
     const semyear = metadata.semyear || req.body.semyear || '';
+    const startTime = metadata.startTime || req.body.startTime ? new Date(metadata.startTime || req.body.startTime) : null;
+    const endTime = metadata.endTime || req.body.endTime ? new Date(metadata.endTime || req.body.endTime) : null;
     console.log('Location data extracted:', userLocation);
 
     if (!req.files || !req.files.file || req.files.file.length === 0) {
@@ -219,7 +221,9 @@ exports.uploadFile = async (req, res) => {
       Subcourse: Subcourse,
       subject: subject,
       session: session,
-      semyear: semyear
+      semyear: semyear,
+      startTime: startTime,
+      endTime: endTime
     });
 
     // Log file upload activity
@@ -248,7 +252,8 @@ exports.uploadFile = async (req, res) => {
         id: file._id,
         filename: file.originalName,
         uploadedAt: file.createdAt,
-        expiresAt: file.expiresAt
+        startTime: file.startTime,
+        endTime: file.endTime
       }
     }));
   } catch (error) {
@@ -270,7 +275,7 @@ exports.getFiles = async (req, res) => {
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
 
-    let selectFields = 'originalName size createdAt expiresAt downloads mimetype uploadLocation assignedTo uploadedBy status QPdetails Subcourse subject session semyear';
+    let selectFields = 'originalName size createdAt downloads mimetype uploadLocation assignedTo uploadedBy status QPdetails Subcourse subject session semyear startTime endTime';
     if (isAdmin) {
       // Include password for admin users
       selectFields += ' password';
@@ -443,6 +448,21 @@ exports.downloadFile = async (req, res) => {
       return res.status(401).json(encryptResponse({
         success: false,
         message: 'Invalid password'
+      }));
+    }
+
+    // Check if current time is within the allowed download time range
+    const now = new Date();
+    if (file.startTime && now < new Date(file.startTime)) {
+      return res.status(403).json(encryptResponse({
+        success: false,
+        message: `File download not available yet. Available from ${new Date(file.startTime).toLocaleString()}`
+      }));
+    }
+    if (file.endTime && now > new Date(file.endTime)) {
+      return res.status(403).json(encryptResponse({
+        success: false,
+        message: `File download has expired. Expired on ${new Date(file.endTime).toLocaleString()}`
       }));
     }
 
@@ -723,6 +743,66 @@ exports.getFilePassword = async (req, res) => {
       success: false,
       message: 'Server error'
     }));
+  }
+};
+
+// @desc    Update file timing (startTime and endTime)
+// @route   PUT /api/files/:id/timing
+// @access  Private (admin only)
+exports.updateFileTiming = async (req, res) => {
+  try {
+    const userRole = req.user.role;
+    const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+    if (!isAdmin) {
+      return res.status(403).json(encryptResponse({ success: false, message: 'Only admin can update file timing.' }));
+    }
+
+    const fileId = req.params.id;
+    const { startTime, endTime } = req.body;
+
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json(encryptResponse({ success: false, message: 'File not found.' }));
+    }
+
+    // Update timing fields
+    file.startTime = startTime ? new Date(startTime) : null;
+    file.endTime = endTime ? new Date(endTime) : null;
+
+    await file.save();
+
+    // Log timing update activity
+    await logActivity({
+      user: req.user._id,
+      ipAddress: req.ip || req.connection.remoteAddress || 'Unknown',
+      activityType: 'file',
+      action: 'timing_update',
+      description: `File timing updated for "${file.originalName}"`,
+      data: {
+        fileId: file._id,
+        filename: file.originalName,
+        startTime: file.startTime,
+        endTime: file.endTime
+      },
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: 200,
+      location: req.userLocation || { latitude: 0, longitude: 0, city: 'Unknown', country: 'Unknown' },
+      userAgent: req.headers['user-agent'] || 'Unknown'
+    });
+
+    res.status(200).json(encryptResponse({
+      success: true,
+      message: 'File timing updated successfully.',
+      data: {
+        id: file._id,
+        startTime: file.startTime,
+        endTime: file.endTime
+      }
+    }));
+  } catch (error) {
+    console.error('Error in updateFileTiming:', error);
+    res.status(500).json(encryptResponse({ success: false, message: 'Server error' }));
   }
 };
 

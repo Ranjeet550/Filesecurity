@@ -163,7 +163,9 @@ export const uploadFile = async (file) => {
       Subcourse: file.Subcourse || '',
       subject: file.subject || '',
       session: file.session || '',
-      semyear: file.semyear || ''
+      semyear: file.semyear || '',
+      startTime: file.startTime || null,
+      endTime: file.endTime || null
     };
 
     // Encrypt the metadata
@@ -408,6 +410,18 @@ export const getFilePassword = async (fileId) => {
     return response.data;
   } catch (error) {
     console.error('Error getting file password:', error);
+    throw error.response?.data || error.message;
+  }
+};
+
+// Update file timing (admin only)
+export const updateFileTiming = async (fileId, timingData) => {
+  try {
+    const api = authAxios();
+    const response = await api.put(`${FILES_API_URL}/${fileId}/timing`, timingData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating file timing:', error);
     throw error.response?.data || error.message;
   }
 };

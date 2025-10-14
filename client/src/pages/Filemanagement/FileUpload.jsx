@@ -16,8 +16,11 @@ import {
   Row,
   Col,
   Badge,
-  Statistic
+  Statistic,
+  DatePicker,
+  Select
 } from 'antd';
+import dayjs from 'dayjs';
 import {
   UploadOutlined,
   CopyOutlined,
@@ -61,6 +64,8 @@ const FileUpload = () => {
   const [subject, setSubject] = useState('');
   const [session, setSession] = useState('');
   const [semyear, setSemyear] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
 
   // Function to generate a 10-character alphanumeric password with special characters
   const generatePassword = () => {
@@ -148,6 +153,8 @@ const FileUpload = () => {
       fileWithPassword.subject = subject;
       fileWithPassword.session = session;
       fileWithPassword.semyear = semyear;
+      fileWithPassword.startTime = startTime;
+      fileWithPassword.endTime = endTime;
 
       const response = await uploadFile(fileWithPassword);
      
@@ -640,17 +647,93 @@ const FileUpload = () => {
                     </div>
                   )}
                 </div>
-                <div style={{
-                  background: '#fff7e6',
-                  padding: '8px 12px',
-                  borderRadius: '4px',
-                  marginTop: '8px',
-                  border: '1px solid #ffe7ba'
-                }}>
-                  <Text style={{ fontSize: '12px', color: '#8c6e00' }}>
-                    <InfoCircleOutlined style={{ marginRight: '4px' }} />
-                    This password will be used to encrypt your file. You can generate a new one or use the current one.
-                  </Text>
+               
+
+                {/* File Timing Section */}
+                <div style={{ marginTop: '16px' }}>
+                 
+
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#262626',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}>
+                          🟢 Start Time
+                          <Text style={{ fontSize: '11px', color: '#8c8c8c', marginLeft: '4px' }}>(Optional)</Text>
+                        </Text>
+                        <DatePicker
+                          value={startTime ? dayjs(startTime) : null}
+                          onChange={(date) => setStartTime(date ? date.toISOString() : '')}
+                          showTime={{
+                            defaultValue: dayjs('00:00:00', 'HH:mm:ss'),
+                          }}
+                          format="YYYY-MM-DD HH:mm:ss"
+                          placeholder="Select when file becomes available"
+                          size="small"
+                          style={{
+                            marginTop: '6px',
+                            width: '100%',
+                            borderRadius: '4px',
+                            border: '1px solid #d9d9d9',
+                            fontSize: '12px'
+                          }}
+                        />
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#262626',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}>
+                          🔴 End Time
+                          <Text style={{ fontSize: '11px', color: '#8c8c8c', marginLeft: '4px' }}>(Optional)</Text>
+                        </Text>
+                        <DatePicker
+                          value={endTime ? dayjs(endTime) : null}
+                          onChange={(date) => setEndTime(date ? date.toISOString() : '')}
+                          showTime={{
+                            defaultValue: dayjs('23:59:59', 'HH:mm:ss'),
+                          }}
+                          format="YYYY-MM-DD HH:mm:ss"
+                          placeholder="Select when file expires"
+                          size="small"
+                          style={{
+                            marginTop: '6px',
+                            width: '100%',
+                            borderRadius: '4px',
+                            border: '1px solid #d9d9d9',
+                            fontSize: '12px'
+                          }}
+                        />
+                      </div>
+                    </Col>
+                  </Row>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    marginTop: '12px',
+                    border: '1px solid #b7eb8f',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                  }}>
+                    <Text style={{
+                      fontSize: '12px',
+                      color: '#389e0d',
+                      fontWeight: '500'
+                    }}>
+                      <InfoCircleOutlined style={{ marginRight: '6px', fontSize: '14px' }} />
+                      Set timing restrictions for file availability. Leave empty for unrestricted access.
+                    </Text>
+                  </div>
                 </div>
                 
                 {/* Password Strength Indicator */}
@@ -756,13 +839,45 @@ const FileUpload = () => {
                     <Col xs={24} sm={12} md={8}>
                       <div style={{ marginBottom: '8px' }}>
                         <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Session</Text>
-                        <Input
+                        <Select
                           value={session}
-                          onChange={(e) => setSession(e.target.value)}
-                          placeholder="Enter session"
+                          onChange={(value) => setSession(value)}
+                          placeholder="Select session"
                           size="small"
-                          style={{ marginTop: '4px' }}
-                        />
+                          style={{ marginTop: '4px', width: '100%' }}
+                          allowClear
+                          showSearch
+                        >
+                          {(() => {
+                            const currentYear = new Date().getFullYear();
+                            const sessions = [];
+                            // Previous 5 years
+                            for (let i = 5; i >= 1; i--) {
+                              const year = currentYear - i;
+                              sessions.push(
+                                <Select.Option key={`prev-${year}`} value={`${year}-${year + 1}`}>
+                                  {year}-{year + 1}
+                                </Select.Option>
+                              );
+                            }
+                            // Current year
+                            sessions.push(
+                              <Select.Option key={`current-${currentYear}`} value={`${currentYear}-${currentYear + 1}`}>
+                                {currentYear}-{currentYear + 1} (Current)
+                              </Select.Option>
+                            );
+                            // Next 5 years
+                            for (let i = 1; i <= 5; i++) {
+                              const year = currentYear + i;
+                              sessions.push(
+                                <Select.Option key={`next-${year}`} value={`${year}-${year + 1}`}>
+                                  {year}-{year + 1}
+                                </Select.Option>
+                              );
+                            }
+                            return sessions;
+                          })()}
+                        </Select>
                       </div>
                     </Col>
                     <Col xs={24} sm={12} md={8}>

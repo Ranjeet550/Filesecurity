@@ -20,8 +20,13 @@ import {
   Row,
   Col,
   theme,
-  Select
+  Select,
+  DatePicker
 } from 'antd';
+import {
+  InfoCircleOutlined
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 import {
   FileOutlined,
   DeleteOutlined,
@@ -44,7 +49,7 @@ import {
   ClearOutlined
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { deleteFile, getFileById, downloadFile, assignFileToUsers } from '../../api/fileService';
+import { deleteFile, getFileById, downloadFile, assignFileToUsers, updateFileTiming } from '../../api/fileService';
 import { getUsers } from '../../api/userService';
 
 import AuthContext from '../../context/AuthContext';
@@ -99,6 +104,13 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
   // For mapping userId to user object (for assignedTo display)
   const [userMap, setUserMap] = useState({});
   const [assignError, setAssignError] = useState(null);
+
+  // Edit timing modal state
+  const [timingModalVisible, setTimingModalVisible] = useState(false);
+  const [timingLoading, setTimingLoading] = useState(false);
+  const [timingForm] = Form.useForm();
+  const [timingFile, setTimingFile] = useState(null);
+  const [timingError, setTimingError] = useState(null);
 
   // Fetch all users for assignment (admin only) and for assignedTo display
   const fetchAllUsers = async () => {
@@ -155,6 +167,45 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
     setAssignFile(null);
     setAssignError(null);
     assignForm.resetFields();
+  };
+
+  // Open timing modal
+  const handleOpenTiming = (file) => {
+    setTimingFile(file);
+    setTimingError(null);
+    setTimingModalVisible(true);
+    timingForm.setFieldsValue({
+      startTime: file.startTime ? dayjs(file.startTime) : null,
+      endTime: file.endTime ? dayjs(file.endTime) : null
+    });
+  };
+
+  // Update file timing
+  const handleUpdateTiming = async (values) => {
+    setTimingLoading(true);
+    setTimingError(null);
+    try {
+      const timingData = {
+        startTime: values.startTime ? values.startTime.toISOString() : null,
+        endTime: values.endTime ? values.endTime.toISOString() : null
+      };
+      await updateFileTiming(timingFile.id || timingFile._id, timingData);
+      setTimingModalVisible(false);
+      message.success('File timing updated successfully');
+      fetchFiles();
+    } catch (error) {
+      setTimingError(error.message || 'Failed to update file timing');
+    } finally {
+      setTimingLoading(false);
+    }
+  };
+
+  // Close timing modal
+  const closeTimingModal = () => {
+    setTimingModalVisible(false);
+    setTimingFile(null);
+    setTimingError(null);
+    timingForm.resetFields();
   };
 
   // Table styles
@@ -408,6 +459,52 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       onCell: () => ({ style: tableStyles.bodyCell }),
     },
     {
+      title: 'Start Time',
+      dataIndex: 'startTime',
+      key: 'startTime',
+      render: (date) => {
+        if (!date) return '-';
+        const dateStr = new Date(date).toLocaleString();
+        const now = new Date();
+        const dateObj = new Date(date);
+        let color = 'inherit';
+        if (dateObj > now) {
+          color = '#1890ff'; // blue for upcoming
+        } else {
+          color = '#52c41a'; // green for started
+        }
+        return <span style={{ color }}>{dateStr}</span>;
+      },
+      ellipsis: true,
+      width: '150px',
+      responsive: ['md'],
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: 'End Time',
+      dataIndex: 'endTime',
+      key: 'endTime',
+      render: (date) => {
+        if (!date) return '-';
+        const dateStr = new Date(date).toLocaleString();
+        const now = new Date();
+        const dateObj = new Date(date);
+        let color = 'inherit';
+        if (dateObj > now) {
+          color = '#52c41a'; // green for still available
+        } else {
+          color = '#ff4d4f'; // red for expired
+        }
+        return <span style={{ color }}>{dateStr}</span>;
+      },
+      ellipsis: true,
+      width: '150px',
+      responsive: ['md'],
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
       title: 'File Name',
       dataIndex: 'originalName',
       key: 'originalName',
@@ -524,92 +621,104 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       key: 'actions',
       render: (_, record) => {
         const canDelete = hasPermission(user, 'file_management', 'delete');
-  const canAssign = isAdmin;
-        // Only show Share button if user is not a viewer
-        const isViewer = user?.role?.name === 'viewer';
-        return (
-          <Space size="small" wrap>
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              size="small"
-              className="gradient-button"
-              onClick={() => handleDownloadClick(record)}
-              loading={downloadLoading && selectedFile?.id === (record.id || record._id)}
-              disabled={isViewer && record.status !== 'Accepted'}
-            >
-              <span className="action-text">Download</span>
-            </Button>
-            {!isViewer && (
+     const canAssign = isAdmin;
+     const canUpdateTiming = isAdmin;
+          // Only show Share button if user is not a viewer
+          const isViewer = user?.role?.name === 'viewer';
+          return (
+            <Space size="small" wrap>
               <Button
-                type="default"
-                icon={<ShareAltOutlined />}
+                type="primary"
+                icon={<DownloadOutlined />}
                 size="small"
-                onClick={async () => {
-                  try {
-                    const fileId = record.id || record._id;
-                    const link = `${window.location.origin}/download/${fileId}`;
-                    navigator.clipboard.writeText(link);
-                    message.success('Download link copied to clipboard');
-                  } catch (error) {
-                    console.error('Error sharing file:', error);
-                    message.error('Failed to share file');
-                  }
-                }}
+                className="gradient-button"
+                onClick={() => handleDownloadClick(record)}
+                loading={downloadLoading && selectedFile?.id === (record.id || record._id)}
+                disabled={isViewer && record.status !== 'Accepted'}
               >
-                <span className="action-text">Share</span>
+                <span className="action-text">Download</span>
               </Button>
-            )}
-            {canAssign && (
-              <Button
-                type="dashed"
-                icon={<UserOutlined />}
-                size="small"
-                onClick={() => handleOpenAssign(record)}
-                disabled={Array.isArray(record.assignedTo) && record.assignedTo.length > 0}
-              >
-                Assign
-              </Button>
-            )}
-            {isViewer && record.status !== 'Accepted' && (
-              <>
-                {console.log('DEBUG Accept btn:', { userId: user._id, assignedTo: record.assignedTo })}
+              {!isViewer && (
                 <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
+                  type="default"
+                  icon={<ShareAltOutlined />}
                   size="small"
-                  loading={accepting}
                   onClick={async () => {
-                    setAccepting(true);
                     try {
-                      await acceptFile(record._id || record.id);
-                      message.success('File accepted!');
-                      fetchFiles();
-                    } catch (err) {
-                      message.error('Failed to accept file');
-                    } finally {
-                      setAccepting(false);
+                      const fileId = record.id || record._id;
+                      const link = `${window.location.origin}/download/${fileId}`;
+                      navigator.clipboard.writeText(link);
+                      message.success('Download link copied to clipboard');
+                    } catch (error) {
+                      console.error('Error sharing file:', error);
+                      message.error('Failed to share file');
                     }
                   }}
                 >
-                  Accept
+                  <span className="action-text">Share</span>
                 </Button>
-              </>
-            )}
-            {canDelete && (
-              <Popconfirm
-                title="Are you sure you want to delete this file?"
-                description="This action cannot be undone."
-                onConfirm={() => handleDelete(record.id || record._id)}
-                okText="Yes"
-                cancelText="No"
-                okButtonProps={{ danger: true }}
-              >
-                <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-              </Popconfirm>
-            )}
-          </Space>
-        );
+              )}
+              {canUpdateTiming && (
+                <Button
+                  type="default"
+                  icon={<ClockCircleOutlined />}
+                  size="small"
+                  onClick={() => handleOpenTiming(record)}
+                  title="Edit timing"
+                >
+                  Timing
+                </Button>
+              )}
+              {canAssign && (
+                <Button
+                  type="dashed"
+                  icon={<UserOutlined />}
+                  size="small"
+                  onClick={() => handleOpenAssign(record)}
+                  disabled={Array.isArray(record.assignedTo) && record.assignedTo.length > 0}
+                >
+                  Assign
+                </Button>
+              )}
+              {isViewer && record.status !== 'Accepted' && (
+                <>
+                  {console.log('DEBUG Accept btn:', { userId: user._id, assignedTo: record.assignedTo })}
+                  <Button
+                    type="primary"
+                    icon={<CheckCircleOutlined />}
+                    size="small"
+                    loading={accepting}
+                    onClick={async () => {
+                      setAccepting(true);
+                      try {
+                        await acceptFile(record._id || record.id);
+                        message.success('File accepted!');
+                        fetchFiles();
+                      } catch (err) {
+                        message.error('Failed to accept file');
+                      } finally {
+                        setAccepting(false);
+                      }
+                    }}
+                  >
+                    Accept
+                  </Button>
+                </>
+              )}
+              {canDelete && (
+                <Popconfirm
+                  title="Are you sure you want to delete this file?"
+                  description="This action cannot be undone."
+                  onConfirm={() => handleDelete(record.id || record._id)}
+                  okText="Yes"
+                  cancelText="No"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                </Popconfirm>
+              )}
+            </Space>
+          );
       },
       width: '250px',
       onHeaderCell: () => ({ style: tableStyles.headerCell }),
@@ -886,6 +995,105 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         </Form>
       </Modal>
 
+      {/* Edit Timing Modal (Admin Only) */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+            <ClockCircleOutlined style={{ marginRight: '6px', color: '#00BF96', fontSize: '16px' }} />
+            Edit File Timing
+          </div>
+        }
+        open={timingModalVisible}
+        onCancel={closeTimingModal}
+        footer={null}
+        width={450}
+        style={{ top: 20 }}
+        bodyStyle={{ padding: '24px' }}
+      >
+        <Form
+          form={timingForm}
+          name="timing"
+          onFinish={handleUpdateTiming}
+          layout="vertical"
+          size="small"
+        >
+          <Form.Item
+            name="startTime"
+            label={<span style={{ fontSize: '13px', fontWeight: '500' }}>Start Time (Optional)</span>}
+            style={{ marginBottom: '16px' }}
+          >
+            <DatePicker
+              showTime={{
+                defaultValue: dayjs('00:00:00', 'HH:mm:ss'),
+              }}
+              format="YYYY-MM-DD HH:mm:ss"
+              placeholder="Select when file becomes available"
+              style={{ width: '100%' }}
+              size="small"
+            />
+          </Form.Item>
+          <Form.Item
+            name="endTime"
+            label={<span style={{ fontSize: '13px', fontWeight: '500' }}>End Time (Optional)</span>}
+            style={{ marginBottom: '16px' }}
+          >
+            <DatePicker
+              showTime={{
+                defaultValue: dayjs('23:59:59', 'HH:mm:ss'),
+              }}
+              format="YYYY-MM-DD HH:mm:ss"
+              placeholder="Select when file expires"
+              style={{ width: '100%' }}
+              size="small"
+            />
+          </Form.Item>
+          <div style={{
+            background: '#fff7e6',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: '1px solid #ffe7ba',
+            marginBottom: '16px'
+          }}>
+            <Text style={{ fontSize: '12px', color: '#8c6e00' }}>
+              <InfoCircleOutlined style={{ marginRight: '4px' }} />
+              Leave fields empty to make the file available anytime. Set times to restrict download availability.
+            </Text>
+          </div>
+          {timingError && (
+            <Alert
+              message="Timing Update Error"
+              description={timingError}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setTimingError(null)}
+              style={{ marginBottom: 16, fontSize: '13px' }}
+              size="small"
+            />
+          )}
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Row gutter={[16, 16]} justify="end">
+              <Col>
+                <Button onClick={closeTimingModal} size="small">
+                  Cancel
+                </Button>
+              </Col>
+              <Col>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={timingLoading}
+                  className="gradient-button"
+                  size="small"
+                >
+                  Update Timing
+                </Button>
+              </Col>
+            </Row>
+          </Form.Item>
+        </Form>
+      </Modal>
+
       {/* Download Modal */}
       <Modal
         title={
@@ -981,6 +1189,16 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                             <Text type="secondary" style={{ fontSize: 12 }}>
                               Size: {formatBytes(selectedFile.size)}
                             </Text>
+                            {selectedFile.startTime && (
+                              <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                                Available from: {new Date(selectedFile.startTime).toLocaleString()}
+                              </Text>
+                            )}
+                            {selectedFile.endTime && (
+                              <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                                Expires on: {new Date(selectedFile.endTime).toLocaleString()}
+                              </Text>
+                            )}
                           </div>
                         </div>
 
@@ -1002,6 +1220,37 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                                 Enter the password to download this file securely.
                               </Text>
                             </div>
+                            {(() => {
+                              const now = new Date();
+                              const startTime = selectedFile.startTime ? new Date(selectedFile.startTime) : null;
+                              const endTime = selectedFile.endTime ? new Date(selectedFile.endTime) : null;
+
+                              if (startTime && now < startTime) {
+                                return (
+                                  <div style={{ marginTop: '4px' }}>
+                                    <Text type="danger" style={{ fontSize: '12px' }}>
+                                      ⏰ Download not available until {startTime.toLocaleString()}
+                                    </Text>
+                                  </div>
+                                );
+                              } else if (endTime && now > endTime) {
+                                return (
+                                  <div style={{ marginTop: '4px' }}>
+                                    <Text type="danger" style={{ fontSize: '12px' }}>
+                                      ⏰ Download expired on {endTime.toLocaleString()}
+                                    </Text>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div style={{ marginTop: '4px' }}>
+                                    <Text type="success" style={{ fontSize: '12px' }}>
+                                      ✅ Download available now
+                                    </Text>
+                                  </div>
+                                );
+                              }
+                            })()}
                           </div>
                         </div>
                       </Space>

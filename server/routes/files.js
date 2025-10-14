@@ -7,7 +7,8 @@ const {
   deleteFile,
   getFilePassword,
   assignFileToUsers,
-  acceptFile
+  acceptFile,
+  updateFileTiming
 } = require('../controllers/files');
 
 const { protect, optionalAuth } = require('../middleware/auth');
@@ -52,5 +53,8 @@ router.post('/:id/assign', protect, checkPermission('file_management', 'update')
 
 // Accept file (assigned user only)
 router.post('/:id/accept', protect, acceptFile);
+
+// Update file timing (admin only)
+router.put('/:id/timing', protect, checkPermission('file_management', 'update'), updateFileTiming);
 
 module.exports = router;

@@ -243,7 +243,8 @@ const Sidebar = ({ children }) => {
       <Layout style={{
           transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)',
           marginLeft: screens.md ? (collapsed ? 80 : 250) : 0,
-          minHeight: '100vh'
+          minHeight: '100vh',
+          paddingTop: '64px'
         }}>
         <Header collapsed={collapsed} setCollapsed={setCollapsed} onMobileMenuClick={() => setCollapsed(false)} />
         <Content className="app-content" style={{
