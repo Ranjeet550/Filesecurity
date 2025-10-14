@@ -61,10 +61,10 @@ const Dashboard = () => {
 
       // Calculate stats
       const totalFiles = response.data.length;
-      const totalDownloads = response.data.reduce((acc, file) => {
+      const totalDownloads = response.data.filter(file => {
         const downloadCount = file.downloads && Array.isArray(file.downloads) ? file.downloads.length : 0;
-        return acc + downloadCount;
-      }, 0);
+        return downloadCount > 0;
+      }).length;
       const recentUploads = response.data.filter(
         file => new Date(file.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       ).length;

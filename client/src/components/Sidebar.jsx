@@ -245,16 +245,22 @@ const Sidebar = ({ children }) => {
           marginLeft: screens.md ? (collapsed ? 80 : 250) : 0,
           minHeight: '100vh'
         }}>
-        <Header collapsed={collapsed} setCollapsed={setCollapsed} />
+        <Header collapsed={collapsed} setCollapsed={setCollapsed} onMobileMenuClick={() => setCollapsed(false)} />
         <Content className="app-content" style={{
           padding: screens.sm ? '20px' : '12px',
           transition: 'padding 0.3s ease',
-        
+
           minHeight: 'calc(100vh - 64px)',
           overflow: 'auto'
+        }}
+        onClick={() => {
+          // Close sidebar on mobile when clicking outside
+          if (!screens.md && !collapsed) {
+            setCollapsed(true);
+          }
         }}>
           <div
-            
+
           >
             {children}
           </div>
