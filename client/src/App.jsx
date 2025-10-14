@@ -41,7 +41,7 @@ function App() {
 
 // Separate component to use AuthContext
 function AppRoutes() {
-  const { user, token, loading } = useContext(AuthContext);
+  const { user, token, loading, sessionExpired } = useContext(AuthContext);
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -54,6 +54,39 @@ function AppRoutes() {
         fontSize: '16px'
       }}>
         Loading...
+      </div>
+    );
+  }
+
+  // Show session expired message
+  if (sessionExpired) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        padding: '20px',
+        textAlign: 'center'
+      }}>
+        <h2 style={{ color: '#ff4d4f', marginBottom: '16px' }}>Session Expired</h2>
+        <p style={{ marginBottom: '24px', color: '#666' }}>
+          Your session has expired due to inactivity or timeout. Please login again.
+        </p>
+        <button
+          onClick={() => window.location.href = '/login'}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#1890ff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Go to Login
+        </button>
       </div>
     );
   }

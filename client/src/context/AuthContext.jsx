@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { getLocationData } from '../api/fileService';
 import { updateProfile, uploadProfilePicture, getProfile } from '../api/profileService';
@@ -9,11 +9,87 @@ import { storage } from '../utils/storage';
 
 const AuthContext = createContext();
 
+// Session timeout constants (in milliseconds)
+const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
 export const AuthProvider = ({ children }) => {
    const [user, setUser] = useState(null);
    const [token, setToken] = useState(storage.getToken() || null);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState(null);
+   const [sessionExpired, setSessionExpired] = useState(false);
+   const [lastActivity, setLastActivity] = useState(Date.now());
+
+  // Activity tracking function
+  const updateActivity = useCallback(() => {
+    setLastActivity(Date.now());
+  }, []);
+
+  // Session validation function
+  const validateSession = useCallback(() => {
+    const now = Date.now();
+    const sessionStart = storage.getSessionData()?.startTime || now;
+    const timeSinceLogin = now - sessionStart;
+    const timeSinceActivity = now - lastActivity;
+
+    // Check session timeout (2 hours)
+    if (timeSinceLogin > SESSION_TIMEOUT) {
+      handleSessionExpiry('Session expired after 2 hours');
+      return false;
+    }
+
+    // Check inactivity timeout (5 minutes)
+    if (timeSinceActivity > INACTIVITY_TIMEOUT) {
+      handleSessionExpiry('Session expired due to inactivity (5 minutes)');
+      return false;
+    }
+
+    return true;
+  }, [lastActivity]);
+
+  // Handle session expiry
+  const handleSessionExpiry = useCallback((reason) => {
+    console.log('Session expired:', reason);
+    setSessionExpired(true);
+    storage.clearAuth();
+    storage.clearSession();
+    setToken(null);
+    setUser(null);
+    setError(reason);
+  }, []);
+
+  // Activity event listeners
+  useEffect(() => {
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+
+    const handleActivity = () => {
+      updateActivity();
+    };
+
+    events.forEach(event => {
+      document.addEventListener(event, handleActivity, true);
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleActivity, true);
+      });
+    };
+  }, [updateActivity]);
+
+  // Session validation interval
+  useEffect(() => {
+    if (!token) return;
+
+    const interval = setInterval(() => {
+      if (!validateSession()) {
+        clearInterval(interval);
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [token, validateSession]);
 
   // Set axios default headers
   useEffect(() => {
@@ -32,14 +108,30 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      // Validate session on load
+      if (!validateSession()) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await getProfile();
         setUser(res.data);
         storage.setUser(res.data);
+
+        // Initialize session data if not exists
+        if (!storage.getSessionData()) {
+          storage.setSessionData({
+            startTime: Date.now(),
+            lastActivity: Date.now()
+          });
+        }
+
         setLoading(false);
       } catch (err) {
         console.error('Error loading user:', err);
         storage.clearAuth();
+        storage.clearSession();
         setToken(null);
         setUser(null);
         setError('Authentication error. Please login again.');
@@ -48,7 +140,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     loadUser();
-  }, [token]);
+  }, [token, validateSession]);
 
   // Register user
   const register = async (userData) => {
@@ -83,6 +175,15 @@ export const AuthProvider = ({ children }) => {
       storage.setUser(responseData.user);
       setToken(responseData.token);
       setUser(responseData.user);
+
+      // Initialize session data
+      storage.setSessionData({
+        startTime: Date.now(),
+        lastActivity: Date.now()
+      });
+
+      setLastActivity(Date.now());
+      setSessionExpired(false);
       setLoading(false);
       return responseData;
     } catch (err) {
@@ -126,6 +227,15 @@ export const AuthProvider = ({ children }) => {
       storage.setUser(responseData.user);
       setToken(responseData.token);
       setUser(responseData.user);
+
+      // Initialize session data
+      storage.setSessionData({
+        startTime: Date.now(),
+        lastActivity: Date.now()
+      });
+
+      setLastActivity(Date.now());
+      setSessionExpired(false);
       setLoading(false);
       return responseData;
     } catch (err) {
@@ -141,6 +251,7 @@ export const AuthProvider = ({ children }) => {
     storage.clearSession(); // Clear any session data on logout
     setToken(null);
     setUser(null);
+    setSessionExpired(false);
   };
 
   // Update user profile
@@ -204,12 +315,15 @@ export const AuthProvider = ({ children }) => {
         token,
         loading,
         error,
+        sessionExpired,
         register,
         login,
         logout,
         updateUserProfile,
         uploadUserProfilePicture,
-        setError
+        setError,
+        validateSession,
+        updateActivity
       }}
     >
       {children}
