@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { getLocationData } from '../api/fileService';
 import { updateProfile, uploadProfilePicture, getProfile } from '../api/profileService';
@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
    const [error, setError] = useState(null);
    const [sessionExpired, setSessionExpired] = useState(false);
    const [lastActivity, setLastActivity] = useState(Date.now());
+   const profileFetchedRef = useRef(false);
 
   // Activity tracking function
   const updateActivity = useCallback(() => {
@@ -103,7 +104,7 @@ export const AuthProvider = ({ children }) => {
   // Load user data if token exists
   useEffect(() => {
     const loadUser = async () => {
-      if (!token) {
+      if (!token || profileFetchedRef.current) {
         setLoading(false);
         return;
       }
@@ -115,6 +116,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
+        profileFetchedRef.current = true;
         const res = await getProfile();
         setUser(res.data);
         storage.setUser(res.data);
@@ -252,6 +254,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setSessionExpired(false);
+    profileFetchedRef.current = false; // Reset the flag on logout
   };
 
   // Update user profile
