@@ -53,6 +53,13 @@ const RoleManagement = () => {
   const [form] = Form.useForm();
   const [targetKeys, setTargetKeys] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    showSizeChanger: true,
+    showQuickJumper: true,
+    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} roles`
+  });
 
   // Responsive detection using window resize
   useEffect(() => {
@@ -438,13 +445,29 @@ const RoleManagement = () => {
             loading={loading}
             scroll={{ x: isMobile ? 600 : undefined }}
             pagination={{
-              pageSize: isMobile ? 5 : 10,
+              ...pagination,
+              pageSize: isMobile ? 5 : pagination.pageSize,
               showSizeChanger: !isMobile,
               showQuickJumper: !isMobile,
-              showTotal: (total, range) => 
+              showTotal: (total, range) =>
                 isMobile ? `${total} roles` : `${range[0]}-${range[1]} of ${total} roles`,
+              pageSizeOptions: isMobile ? ['5', '10'] : ['10', '20', '50'],
               size: isMobile ? 'small' : 'default',
-              position: isMobile ? ['bottomCenter'] : ['bottomRight']
+              position: isMobile ? ['bottomCenter'] : ['bottomRight'],
+              onChange: (page, pageSize) => {
+                setPagination(prev => ({
+                  ...prev,
+                  current: page,
+                  pageSize: pageSize
+                }));
+              },
+              onShowSizeChange: (current, size) => {
+                setPagination(prev => ({
+                  ...prev,
+                  current: 1,
+                  pageSize: size
+                }));
+              }
             }}
             size={isMobile ? 'small' : 'default'}
           />

@@ -48,6 +48,13 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [form] = Form.useForm();
   const [isMobile, setIsMobile] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    showSizeChanger: true,
+    showQuickJumper: false,
+    showTotal: (total) => `Total ${total} users`
+  });
 
   // Responsive detection using window resize
   useEffect(() => {
@@ -450,12 +457,27 @@ const UserManagement = () => {
             loading={loading}
             scroll={{ x: isMobile ? 600 : undefined }}
             pagination={{
-              pageSize: isMobile ? 5 : 10,
+              ...pagination,
+              pageSize: isMobile ? 5 : pagination.pageSize,
               showTotal: (total) => `Total ${total} users`,
               showSizeChanger: !isMobile,
               pageSizeOptions: isMobile ? ['5', '10'] : ['10', '20', '50'],
               size: isMobile ? 'small' : 'default',
-              position: isMobile ? ['bottomCenter'] : ['bottomRight']
+              position: isMobile ? ['bottomCenter'] : ['bottomRight'],
+              onChange: (page, pageSize) => {
+                setPagination(prev => ({
+                  ...prev,
+                  current: page,
+                  pageSize: pageSize
+                }));
+              },
+              onShowSizeChange: (current, size) => {
+                setPagination(prev => ({
+                  ...prev,
+                  current: 1,
+                  pageSize: size
+                }));
+              }
             }}
             size={isMobile ? 'small' : 'default'}
           />
