@@ -1,9 +1,11 @@
 // React imports
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, App as AntApp } from 'antd';
-
+import { useContext } from 'react';
 
 import themeConfig from './theme/themeConfig';
+import { storage } from './utils/storage';
+import AuthContext from './context/AuthContext';
 
 // Pages
 import Login from './pages/UserAuth/Login';
@@ -30,68 +32,90 @@ function App() {
     <ConfigProvider theme={themeConfig}>
       <AntApp>
         <AuthProvider>
-          <Router>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/verify-otp" element={<OTPVerification />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/dashboard" element={
-                <PrivateRoute>
-                  <Dashboard />
-                </PrivateRoute>
-              } />
-              <Route path="/upload" element={
-                <PermissionRoute moduleName="file_management" action="create">
-                  <FileUpload />
-                </PermissionRoute>
-              } />
-              <Route path="/change-password" element={
-                <PrivateRoute>
-                  <ChangePassword />
-                </PrivateRoute>
-              } />
-              <Route path="/profile" element={
-                <PrivateRoute>
-                  <Profile />
-                </PrivateRoute>
-              } />
-             
-              <Route path="/download/:fileId" element={<FileDownload />} />
-              <Route path="/users" element={
-                <AdminRoute>
-                  <UserManagement />
-                </AdminRoute>
-              } />
-              <Route path="/roles" element={
-                <AdminRoute>
-                  <RoleManagement />
-                </AdminRoute>
-              } />
-              <Route path="/permissions" element={
-                <AdminRoute>
-                  <PermissionManagement />
-                </AdminRoute>
-              } />
-              <Route path="/modules" element={
-                <AdminRoute>
-                  <ModuleManagement />
-                </AdminRoute>
-              } />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
+          <AppRoutes />
         </AuthProvider>
       </AntApp>
     </ConfigProvider>
   );
 }
 
-// Private route component
-const PrivateRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
+// Separate component to use AuthContext
+function AppRoutes() {
+  const { user, token, loading } = useContext(AuthContext);
 
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        fontSize: '16px'
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-otp" element={<OTPVerification />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/dashboard" element={
+          <PrivateRoute user={user} token={token}>
+            <Dashboard />
+          </PrivateRoute>
+        } />
+        <Route path="/upload" element={
+          <PermissionRoute user={user} token={token} moduleName="file_management" action="create">
+            <FileUpload />
+          </PermissionRoute>
+        } />
+        <Route path="/change-password" element={
+          <PrivateRoute user={user} token={token}>
+            <ChangePassword />
+          </PrivateRoute>
+        } />
+        <Route path="/profile" element={
+          <PrivateRoute user={user} token={token}>
+            <Profile />
+          </PrivateRoute>
+        } />
+
+        <Route path="/download/:fileId" element={<FileDownload />} />
+        <Route path="/users" element={
+          <AdminRoute user={user} token={token}>
+            <UserManagement />
+          </AdminRoute>
+        } />
+        <Route path="/roles" element={
+          <AdminRoute user={user} token={token}>
+            <RoleManagement />
+          </AdminRoute>
+        } />
+        <Route path="/permissions" element={
+          <AdminRoute user={user} token={token}>
+            <PermissionManagement />
+          </AdminRoute>
+        } />
+        <Route path="/modules" element={
+          <AdminRoute user={user} token={token}>
+            <ModuleManagement />
+          </AdminRoute>
+        } />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
+  );
+}
+
+// Private route component
+const PrivateRoute = ({ children, user, token }) => {
   if (!token) {
     return <Navigate to="/login" replace />;
   }
@@ -100,11 +124,8 @@ const PrivateRoute = ({ children }) => {
 };
 
 // Admin route component
-const AdminRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-  if (!token || (user.role?.name !== 'admin' && user.role !== 'admin')) {
+const AdminRoute = ({ children, user, token }) => {
+  if (!token || !user || (user.role?.name !== 'admin' && user.role !== 'admin')) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -112,15 +133,12 @@ const AdminRoute = ({ children }) => {
 };
 
 // Permission-based route component
-const PermissionRoute = ({ children, moduleName, action }) => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-  if (!token) {
+const PermissionRoute = ({ children, user, token, moduleName, action }) => {
+  if (!token || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Check permission from stored user
+  // Check permission from user context
   const hasPerm = Array.isArray(user?.role?.permissions)
     ? user.role.permissions.some(
         (p) => p?.module?.name === moduleName && p?.action === action && p?.isActive !== false

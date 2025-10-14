@@ -24,10 +24,11 @@ import axios from 'axios';
 import { FILES_API_URL } from '../config';
 import { decryptResponse } from '../utils/responseDecryption';
 import { encryptRequest } from '../utils/requestEncryption';
+import { storage } from '../utils/storage';
 
 // Create a function to get the auth token
 const getAuthToken = () => {
-  return localStorage.getItem('token');
+  return storage.getToken();
 };
 
 // Create an axios instance with auth header
@@ -151,19 +152,23 @@ export const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Add fields in plain text
-    formData.append('password', file.password || '');
-    formData.append('latitude', location.latitude.toString());
-    formData.append('longitude', location.longitude.toString());
-    formData.append('city', location.city);
-    formData.append('country', location.country);
+    // Create metadata object with all sensitive data
+    const metadata = {
+      password: file.password || '',
+      latitude: location.latitude,
+      longitude: location.longitude,
+      city: location.city,
+      country: location.country,
+      QPdetails: file.QPdetails || '',
+      Subcourse: file.Subcourse || '',
+      subject: file.subject || '',
+      session: file.session || '',
+      semyear: file.semyear || ''
+    };
 
-    // Add additional file details
-    if (file.QPdetails) formData.append('QPdetails', file.QPdetails);
-    if (file.Subcourse) formData.append('Subcourse', file.Subcourse);
-    if (file.subject) formData.append('subject', file.subject);
-    if (file.session) formData.append('session', file.session);
-    if (file.semyear) formData.append('semyear', file.semyear);
+    // Encrypt the metadata
+    const encryptedMetadata = await encryptRequest(metadata);
+    formData.append('metadata', JSON.stringify(encryptedMetadata));
 
    
    
@@ -255,9 +260,12 @@ export const downloadFile = async (fileId, password, originalName = null) => {
       country: location.country
     };
 
+    // Encrypt the request data to hide payload from browser dev tools
+    const encryptedData = await encryptRequest(requestData);
+
     const response = await axios.post(
       `${FILES_API_URL}/${fileId}/download`,
-      requestData,
+      encryptedData,
       {
         responseType: 'blob',
         headers: {
@@ -327,7 +335,6 @@ export const downloadFile = async (fileId, password, originalName = null) => {
     // Ultimate fallback: if filename is still 'download', use the originalName from database
     if (filename === 'download' && originalName) {
       filename = originalName;
-      console.log('Using original filename from database:', filename);
     } else if (filename === 'download') {
       // Final fallback: use a generic name with extension
       const contentType = response.headers['content-type'] || 'application/octet-stream';

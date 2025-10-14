@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { AUTH_API_URL } from '../config';
 import { decryptResponse } from '../utils/responseDecryption';
+import { storage } from '../utils/storage';
 
 // Create a function to get the auth token
 const getAuthToken = () => {
-  return localStorage.getItem('token');
+  return storage.getToken();
 };
 
 // Create an axios instance with auth header for JSON

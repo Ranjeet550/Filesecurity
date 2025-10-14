@@ -64,8 +64,8 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
       className="app-header"
       style={{
         padding: '0 24px',
-        background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        background: 'linear-gradient(180deg, #1a2141 0%, #141937 100%)',
+        boxShadow: '4px 0 20px rgba(0, 0, 0, 0.15)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -76,7 +76,7 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
         left: 0,
         right: 0,
         zIndex: 100,
-        borderLeft: 'none',
+        borderRight: '2px solid rgba(255, 255, 255, 0.1)',
         transition: 'all 0.3s cubic-bezier(0.2, 0, 0, 1)',
         width: '100%'
       }}
@@ -102,10 +102,10 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
             border: '1px solid rgba(255, 255, 255, 0.1)'
           }}
           onMouseEnter={(e) => {
-            e.target.style.color = '#3498db';
-            e.target.style.background = 'rgba(52, 152, 219, 0.15)';
+            e.target.style.color = '#00BF96';
+            e.target.style.background = 'rgba(0, 191, 150, 0.15)';
             e.target.style.transform = 'scale(1.05)';
-            e.target.style.borderColor = 'rgba(52, 152, 219, 0.3)';
+            e.target.style.borderColor = 'rgba(0, 191, 150, 0.3)';
           }}
           onMouseLeave={(e) => {
             e.target.style.color = 'rgba(255, 255, 255, 0.9)';
@@ -155,10 +155,10 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
             backdropFilter: 'blur(10px)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(52, 152, 219, 0.1) 100%)';
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 191, 150, 0.2) 0%, rgba(0, 191, 150, 0.1) 100%)';
             e.currentTarget.style.transform = 'translateY(-2px)';
             e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-            e.currentTarget.style.borderColor = 'rgba(52, 152, 219, 0.4)';
+            e.currentTarget.style.borderColor = 'rgba(0, 191, 150, 0.4)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)';
@@ -168,9 +168,9 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
           }}>
             <Avatar
               style={{
-                backgroundColor: user?.profilePicture ? 'transparent' : '#3498db',
+                backgroundColor: user?.profilePicture ? 'transparent' : '#00BF96',
                 marginRight: '14px',
-                boxShadow: '0 4px 15px rgba(52, 152, 219, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 4px 15px rgba(0, 191, 150, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

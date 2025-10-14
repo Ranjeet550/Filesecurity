@@ -302,7 +302,6 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
 
       // Perform the download with original filename
       const result = await downloadFile(selectedFile.id || selectedFile._id, values.password, selectedFile.originalName);
-      console.log('Download completed successfully:', result);
 
       clearInterval(progressInterval);
       setDownloadProgress(100);

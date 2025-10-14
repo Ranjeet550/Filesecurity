@@ -25,7 +25,7 @@ const path = require('path');
 const { logActivity } = require('../middleware/logger');
 const { encryptFile } = require('../utils/fileEncryption');
 const { protectUploadedPDF, protectUploadedExcel } = require('../utils/pdfProtection');
-const { encryptResponse } = require('../utils/responseEncryption');
+const { encryptResponse, decryptRequest } = require('../utils/responseEncryption');
 const { xorDecrypt } = require('../utils/fileEncryption');
 
 // @desc    Upload a file
@@ -39,21 +39,40 @@ exports.uploadFile = async (req, res) => {
     console.log('Request files:', req.files);
     console.log('User:', req.user);
 
-    // Extract data from form fields
-    const password = req.body.password || '';
+    // Extract and decrypt metadata if encrypted
+    let metadata = {};
+    if (req.body.metadata) {
+      try {
+        const metadataObj = JSON.parse(req.body.metadata);
+        if (metadataObj.encrypted) {
+          metadata = decryptRequest(metadataObj.encrypted);
+        } else {
+          metadata = metadataObj;
+        }
+      } catch (error) {
+        console.error('Error parsing metadata:', error);
+        return res.status(400).json(encryptResponse({
+          success: false,
+          message: 'Invalid metadata format'
+        }));
+      }
+    }
+
+    // Extract data from decrypted metadata or fallback to individual fields
+    const password = metadata.password || req.body.password || '';
     let userLocation = {
-      latitude: parseFloat(req.body.latitude) || 0,
-      longitude: parseFloat(req.body.longitude) || 0,
-      city: req.body.city || 'Unknown',
-      country: req.body.country || 'Unknown'
+      latitude: parseFloat(metadata.latitude || req.body.latitude) || 0,
+      longitude: parseFloat(metadata.longitude || req.body.longitude) || 0,
+      city: metadata.city || req.body.city || 'Unknown',
+      country: metadata.country || req.body.country || 'Unknown'
     };
 
     // Extract additional file details
-    const QPdetails = req.body.QPdetails || '';
-    const Subcourse = req.body.Subcourse || '';
-    const subject = req.body.subject || '';
-    const session = req.body.session || '';
-    const semyear = req.body.semyear || '';
+    const QPdetails = metadata.QPdetails || req.body.QPdetails || '';
+    const Subcourse = metadata.Subcourse || req.body.Subcourse || '';
+    const subject = metadata.subject || req.body.subject || '';
+    const session = metadata.session || req.body.session || '';
+    const semyear = metadata.semyear || req.body.semyear || '';
     console.log('Location data extracted:', userLocation);
 
     if (!req.files || !req.files.file || req.files.file.length === 0) {
@@ -390,7 +409,18 @@ exports.getFile = async (req, res) => {
 // @access  Public (with password)
 exports.downloadFile = async (req, res) => {
   try {
-    const { password } = req.body;
+    // Decrypt the request if it's encrypted
+    let requestData = req.body;
+    if (requestData.encrypted) {
+      try {
+        requestData = decryptRequest(requestData.encrypted);
+      } catch (decryptError) {
+        console.error('Request decryption failed:', decryptError);
+        // Fallback to original request data if decryption fails
+      }
+    }
+
+    const { password } = requestData;
 
     if (!password) {
       return res.status(400).json(encryptResponse({

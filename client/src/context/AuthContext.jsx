@@ -5,14 +5,15 @@ import { updateProfile, uploadProfilePicture, getProfile } from '../api/profileS
 import { AUTH_API_URL } from '../config';
 import { decryptResponse } from '../utils/responseDecryption';
 import { encryptRequest } from '../utils/requestEncryption';
+import { storage } from '../utils/storage';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+   const [user, setUser] = useState(null);
+   const [token, setToken] = useState(storage.getToken() || null);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState(null);
 
   // Set axios default headers
   useEffect(() => {
@@ -34,12 +35,11 @@ export const AuthProvider = ({ children }) => {
       try {
         const res = await getProfile();
         setUser(res.data);
-        localStorage.setItem('user', JSON.stringify(res.data));
+        storage.setUser(res.data);
         setLoading(false);
       } catch (err) {
         console.error('Error loading user:', err);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        storage.clearAuth();
         setToken(null);
         setUser(null);
         setError('Authentication error. Please login again.');
@@ -79,8 +79,8 @@ export const AuthProvider = ({ children }) => {
         responseData = await decryptResponse(responseData.encrypted);
       }
 
-      localStorage.setItem('token', responseData.token);
-      localStorage.setItem('user', JSON.stringify(responseData.user));
+      storage.setToken(responseData.token);
+      storage.setUser(responseData.user);
       setToken(responseData.token);
       setUser(responseData.user);
       setLoading(false);
@@ -122,8 +122,8 @@ export const AuthProvider = ({ children }) => {
         responseData = await decryptResponse(responseData.encrypted);
       }
 
-      localStorage.setItem('token', responseData.token);
-      localStorage.setItem('user', JSON.stringify(responseData.user));
+      storage.setToken(responseData.token);
+      storage.setUser(responseData.user);
       setToken(responseData.token);
       setUser(responseData.user);
       setLoading(false);
@@ -137,8 +137,8 @@ export const AuthProvider = ({ children }) => {
 
   // Logout user
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    storage.clearAuth();
+    storage.clearSession(); // Clear any session data on logout
     setToken(null);
     setUser(null);
   };
@@ -152,10 +152,10 @@ export const AuthProvider = ({ children }) => {
       const res = await updateProfile(profileData);
       console.log('Profile update response:', res);
 
-      // Update user state and localStorage
+      // Update user state and secure storage
       if (res && res.data && res.data.data) {
         setUser(res.data.data);
-        localStorage.setItem('user', JSON.stringify(res.data.data));
+        storage.setUser(res.data.data);
         console.log('User state updated:', res.data.data);
       }
 
@@ -181,7 +181,7 @@ export const AuthProvider = ({ children }) => {
       // Update user state with complete user data from response
       if (res && res.data && res.data.data) {
         setUser(res.data.data);
-        localStorage.setItem('user', JSON.stringify(res.data.data));
+        storage.setUser(res.data.data);
         console.log('User state updated with new profile picture:', res.data.data);
       } else {
         console.error('Invalid response structure:', res);

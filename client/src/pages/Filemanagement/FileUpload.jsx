@@ -68,31 +68,37 @@ const FileUpload = () => {
     const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const numbers = '0123456789';
     const specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-    
+
     let password = '';
-    
+
     // Ensure at least one character from each category
     password += lowercase[Math.floor(Math.random() * lowercase.length)];
     password += uppercase[Math.floor(Math.random() * uppercase.length)];
     password += numbers[Math.floor(Math.random() * numbers.length)];
     password += specialChars[Math.floor(Math.random() * specialChars.length)];
-    
+
     // Fill the remaining 6 characters with random selection from all categories
     const allChars = lowercase + uppercase + numbers + specialChars;
     for (let i = 0; i < 6; i++) {
       password += allChars[Math.floor(Math.random() * allChars.length)];
     }
-    
+
     // Shuffle the password to make it more random
     password = password.split('').sort(() => Math.random() - 0.5).join('');
-    
+
     setGeneratedPassword(password);
+    localStorage.setItem('generatedPassword', password);
     message.success('New password generated successfully!');
   };
 
-  // Generate password on component mount
+  // Generate password on component mount or load from localStorage
   useEffect(() => {
-    generatePassword();
+    const storedPassword = localStorage.getItem('generatedPassword');
+    if (storedPassword) {
+      setGeneratedPassword(storedPassword);
+    } else {
+      generatePassword();
+    }
   }, []);
 
   const handleUpload = async () => {
@@ -503,15 +509,7 @@ const FileUpload = () => {
                     <Title level={4} style={{ margin: '0 0 8px 0', color: '#262626', fontSize: '16px' }}>
                       Drop your file here or click to browse
                     </Title>
-                                      <Text style={{
-                    fontSize: '13px',
-                    color: '#8c8c8c',
-                    display: 'block',
-                    maxWidth: '400px',
-                    margin: '0 auto'
-                  }}>
-                    Your file will be automatically encrypted with 256-bit AES encryption and protected with a 10-character alphanumeric password including special characters.
-                  </Text>
+                             
                   </div>
                 </Dragger>
               </div>
