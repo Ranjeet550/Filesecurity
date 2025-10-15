@@ -334,7 +334,7 @@ const UserManagement = () => {
               {isMobile && 'Edit'}
             </Button>
           </Tooltip>
-          <Tooltip title="Delete User">
+          <Tooltip title={record.role?.name === 'admin' ? 'Cannot delete admin user' : 'Delete User'}>
             <Popconfirm
               title="Delete this user?"
               description="This action cannot be undone."
@@ -342,12 +342,14 @@ const UserManagement = () => {
               okText="Yes"
               cancelText="No"
               okButtonProps={{ danger: true }}
+              disabled={record.role?.name === 'admin'}
             >
               <Button
                 danger
                 icon={<DeleteOutlined />}
                 shape={isMobile ? 'default' : 'circle'}
                 size={isMobile ? 'small' : 'middle'}
+                disabled={record.role?.name === 'admin'}
               >
                 {isMobile && 'Delete'}
               </Button>

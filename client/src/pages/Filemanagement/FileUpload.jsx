@@ -92,18 +92,12 @@ const FileUpload = () => {
     password = password.split('').sort(() => Math.random() - 0.5).join('');
 
     setGeneratedPassword(password);
-    localStorage.setItem('generatedPassword', password);
     message.success('New password generated successfully!');
   };
 
-  // Generate password on component mount or load from localStorage
+  // Generate password on component mount
   useEffect(() => {
-    const storedPassword = localStorage.getItem('generatedPassword');
-    if (storedPassword) {
-      setGeneratedPassword(storedPassword);
-    } else {
-      generatePassword();
-    }
+    generatePassword();
   }, []);
 
   const handleUpload = async () => {

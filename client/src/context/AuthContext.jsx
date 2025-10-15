@@ -145,13 +145,13 @@ export const AuthProvider = ({ children }) => {
   }, [token, validateSession]);
 
   // Register user
-  const register = async (userData) => {
+  const register = async (userData, locationData) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get location data using our utility function
-      const location = await getLocationData();
+      // Use provided location data or get it if not provided
+      const location = locationData || await getLocationData();
 
       // Add location data to the request
       const requestData = {
@@ -196,13 +196,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login user
-  const login = async (email, password) => {
+  const login = async (email, password, locationData) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get location data using our utility function
-      const location = await getLocationData();
+      // Use provided location data or get it if not provided
+      const location = locationData || await getLocationData();
 
       // Add location data to the request
       const requestData = {
@@ -251,6 +251,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     storage.clearAuth();
     storage.clearSession(); // Clear any session data on logout
+    // Clear location data from localStorage on logout
+    localStorage.removeItem('userLocation');
     setToken(null);
     setUser(null);
     setSessionExpired(false);

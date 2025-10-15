@@ -127,7 +127,7 @@ exports.login = async (req, res) => {
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select('+password').populate('role', 'name displayName');
+    const user = await User.findOne({ email }).select('+password').populate('role', 'name displayName isActive');
     if (!user) {
       // Log failed login attempt for non-existent user
       await logActivity({
@@ -178,6 +178,33 @@ exports.login = async (req, res) => {
       return res.status(401).json(encryptResponse({
         success: false,
         message: 'Invalid credentials'
+      }));
+    }
+
+    // Check if user's role is active
+    if (!user.role || !user.role.isActive) {
+      // Log failed login attempt for inactive role
+      await logActivity({
+        user: user._id,
+        ipAddress: req.ip || req.connection.remoteAddress || 'Unknown',
+        activityType: 'auth',
+        action: 'login_failed',
+        description: `Failed login attempt for user ${user.email} (inactive role)`,
+        data: {
+          userId: user._id,
+          email: user.email,
+          reason: 'inactive_role'
+        },
+        method: req.method,
+        path: req.originalUrl,
+        statusCode: 401,
+        location: req.userLocation,
+        userAgent: req.headers['user-agent'] || 'Unknown'
+      });
+
+      return res.status(401).json(encryptResponse({
+        success: false,
+        message: 'Account is disabled. Please contact administrator.'
       }));
     }
 

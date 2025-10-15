@@ -1,28 +1,72 @@
 import { useState, useContext } from 'react';
-import { Form, Input, Button, Card, Typography, Alert, Spin, Divider, Row, Col, Grid } from 'antd';
-import { UserOutlined, LockOutlined, SecurityScanOutlined, SafetyOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, Alert, Spin, Divider, Row, Col, Grid, Modal } from 'antd';
+import { UserOutlined, LockOutlined, SecurityScanOutlined, SafetyOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
+import { getLocationData } from '../../api/fileService';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const Login = () => {
-  const [form] = Form.useForm();
-  const { login, loading, error, setError } = useContext(AuthContext);
-  const [localLoading, setLocalLoading] = useState(false);
-  const navigate = useNavigate();
-  const screens = useBreakpoint();
+   const [form] = Form.useForm();
+   const { login, loading, error, setError } = useContext(AuthContext);
+   const [localLoading, setLocalLoading] = useState(false);
+   const [locationModalVisible, setLocationModalVisible] = useState(false);
+   const [locationData, setLocationData] = useState(null);
+   const [locationError, setLocationError] = useState(null);
+   const navigate = useNavigate();
+   const screens = useBreakpoint();
 
-  const onFinish = async (values) => {
+  const requestLocationPermission = async () => {
+    try {
+      setLocationError(null);
+      const location = await getLocationData();
+      setLocationData(location);
+      return location;
+    } catch (err) {
+      setLocationError('Location access is required for login. Please allow location access and try again.');
+      throw err;
+    }
+  };
+
+  const handleLocationModalOk = async () => {
+    try {
+      const location = await requestLocationPermission();
+      setLocationModalVisible(false);
+      // We need to get the form values here since the modal callback doesn't have access to them
+      const values = form.getFieldsValue();
+      await performLogin(values, location);
+    } catch (err) {
+      // Error already handled in requestLocationPermission
+    }
+  };
+
+  const handleLocationModalCancel = () => {
+    setLocationModalVisible(false);
+    setLocationError('Location access is required for login. Please allow location access in your browser settings and try again.');
+  };
+
+  const performLogin = async (values, location) => {
     try {
       setLocalLoading(true);
-      await login(values.email, values.password);
+      await login(values.email, values.password, location);
       navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
     } finally {
       setLocalLoading(false);
+    }
+  };
+
+  const onFinish = async (values) => {
+    try {
+      // First, try to get location data
+      const location = await requestLocationPermission();
+      await performLogin(values, location);
+    } catch (err) {
+      // If location permission fails, show modal to request permission
+      setLocationModalVisible(true);
     }
   };
 
@@ -100,24 +144,27 @@ const Login = () => {
           Log in to your account
         </Title>
 
-        {error && (
-          <Alert
-            message="Login Failed"
-            description={error}
-            type="error"
-            showIcon
-            closable
-            onClose={() => setError(null)}
-            style={{
-              marginBottom: 16,
-              borderRadius: '8px',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(255, 92, 117, 0.2)',
-              fontSize: '12px',
-              padding: '8px 12px'
-            }}
-          />
-        )}
+        {(error || locationError) && (
+           <Alert
+             message="Login Failed"
+             description={locationError || error}
+             type="error"
+             showIcon
+             closable
+             onClose={() => {
+               setError(null);
+               setLocationError(null);
+             }}
+             style={{
+               marginBottom: 16,
+               borderRadius: '8px',
+               border: 'none',
+               boxShadow: '0 2px 8px rgba(255, 92, 117, 0.2)',
+               fontSize: '12px',
+               padding: '8px 12px'
+             }}
+           />
+         )}
 
         <Spin spinning={loading || localLoading}>
           <Form
@@ -210,7 +257,30 @@ const Login = () => {
           </Form>
         </Spin>
 
-       
+        <Modal
+          title={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <EnvironmentOutlined style={{ marginRight: '8px', color: '#00BF96' }} />
+              Location Access Required
+            </div>
+          }
+          open={locationModalVisible}
+          onOk={handleLocationModalOk}
+          onCancel={handleLocationModalCancel}
+          okText="Allow Location Access"
+          cancelText="Cancel"
+          centered
+          maskClosable={false}
+          closable={false}
+        >
+          <p style={{ marginBottom: '16px' }}>
+            This application requires your location to securely store login information.
+            Your location data helps us provide better security and compliance features.
+          </p>
+          <p style={{ marginBottom: '0', fontSize: '12px', color: '#666' }}>
+            <strong>Note:</strong> Your location is only used for security purposes and is not shared with third parties.
+          </p>
+        </Modal>
       </Card>
     </div>
   );

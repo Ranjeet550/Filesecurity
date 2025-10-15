@@ -58,7 +58,7 @@ const authAxios = () => {
 };
 
 
-// Get location data
+// Get location data (always requests permission, no caching)
 export const getLocationData = async () => {
   // Default location data when geolocation is not available
   const defaultLocation = {
@@ -68,20 +68,6 @@ export const getLocationData = async () => {
     country: 'Unknown'
   };
 
-  // Check if we have cached location data to avoid repeated permission prompts
-  const cachedLocation = localStorage.getItem('userLocation');
-  if (cachedLocation) {
-    try {
-      const parsedLocation = JSON.parse(cachedLocation);
-      // Only use cached location if it's not the default (which means permission was granted before)
-      if (parsedLocation.latitude !== 0 || parsedLocation.longitude !== 0) {
-        return parsedLocation;
-      }
-    } catch (e) {
-      // Ignore parse errors and continue with geolocation request
-    }
-  }
-
   try {
     // Check if geolocation is available in the browser
     if (!navigator.geolocation) {
@@ -89,7 +75,7 @@ export const getLocationData = async () => {
       return defaultLocation;
     }
 
-    // Try to get position with a timeout
+    // Try to get position with a timeout (always request fresh location)
     const position = await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Geolocation request timed out'));
@@ -105,9 +91,9 @@ export const getLocationData = async () => {
           reject(err);
         },
         {
-          enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 0
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0 // Always get fresh location, never use cached
         }
       );
     });
@@ -120,19 +106,9 @@ export const getLocationData = async () => {
       country: 'Unknown'
     };
 
-    // Cache the location data to avoid repeated permission prompts
-    localStorage.setItem('userLocation', JSON.stringify(locationData));
-
     return locationData;
   } catch (err) {
     console.log('Using default location data:', err.message);
-
-    // Cache the default location to avoid repeated permission prompts
-    // Only if the error is a permission denied error
-    if (err.code === 1) { // 1 = PERMISSION_DENIED
-      localStorage.setItem('userLocation', JSON.stringify(defaultLocation));
-    }
-
     return defaultLocation;
   }
 };

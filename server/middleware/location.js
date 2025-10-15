@@ -5,7 +5,6 @@
 exports.trackLocation = async (req, res, next) => {
   try {
     console.log('Location middleware called');
-    console.log('Request body:', req.body);
     console.log('Request method:', req.method);
     console.log('Request path:', req.path);
 
@@ -17,27 +16,43 @@ exports.trackLocation = async (req, res, next) => {
       country: 'Unknown'
     };
 
+    // Check if request body is encrypted
+    let requestBody = req.body;
+    if (req.body && req.body.encrypted) {
+      try {
+        // Import decryptRequest here to avoid circular dependencies
+        const { decryptRequest } = require('../utils/responseEncryption');
+        requestBody = decryptRequest(req.body.encrypted);
+        console.log('Decrypted request body for location extraction');
+      } catch (decryptError) {
+        console.error('Failed to decrypt request for location:', decryptError);
+        requestBody = req.body; // Fallback to encrypted body
+      }
+    }
+
+    console.log('Processing location from body:', requestBody);
+
     // In a real app, you would use IP-based geolocation or client-provided coordinates
     // Check for location in different parts of the request
     let locationData;
 
-    // Check in req.body.location (JSON data)
-    if (req.body && req.body.location) {
-      console.log('Found location in req.body.location:', req.body.location);
-      locationData = req.body.location;
+    // Check in requestBody.location (JSON data)
+    if (requestBody && requestBody.location) {
+      console.log('Found location in requestBody.location:', requestBody.location);
+      locationData = requestBody.location;
     }
-    // Check in req.body directly (form data)
-    else if (req.body && (req.body.latitude || req.body.longitude)) {
-      console.log('Found location in req.body directly');
+    // Check in requestBody directly (form data)
+    else if (requestBody && (requestBody.latitude !== undefined || requestBody.longitude !== undefined)) {
+      console.log('Found location in requestBody directly');
       locationData = {
-        latitude: parseFloat(req.body.latitude) || 0,
-        longitude: parseFloat(req.body.longitude) || 0,
-        city: req.body.city || 'Unknown',
-        country: req.body.country || 'Unknown'
+        latitude: parseFloat(requestBody.latitude) || 0,
+        longitude: parseFloat(requestBody.longitude) || 0,
+        city: requestBody.city || 'Unknown',
+        country: requestBody.country || 'Unknown'
       };
     }
     // Check in req.query (URL parameters)
-    else if (req.query && (req.query.latitude || req.query.longitude)) {
+    else if (req.query && (req.query.latitude !== undefined || req.query.longitude !== undefined)) {
       console.log('Found location in req.query');
       locationData = {
         latitude: parseFloat(req.query.latitude) || 0,
@@ -48,7 +63,7 @@ exports.trackLocation = async (req, res, next) => {
     }
 
     // If location data is provided and valid, attach it to the request
-    if (locationData && (locationData.latitude || locationData.longitude)) {
+    if (locationData && (locationData.latitude !== undefined || locationData.longitude !== undefined)) {
       req.userLocation = {
         latitude: parseFloat(locationData.latitude) || 0,
         longitude: parseFloat(locationData.longitude) || 0,

@@ -464,7 +464,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       key: 'startTime',
       render: (date) => {
         if (!date) return '-';
-        const dateStr = new Date(date).toLocaleString();
+        const dateStr = dayjs(date).format('DD/MM/YYYY hh:mm:ss A');
         const now = new Date();
         const dateObj = new Date(date);
         let color = 'inherit';
@@ -487,7 +487,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       key: 'endTime',
       render: (date) => {
         if (!date) return '-';
-        const dateStr = new Date(date).toLocaleString();
+        const dateStr = dayjs(date).format('DD/MM/YYYY hh:mm:ss A');
         const now = new Date();
         const dateObj = new Date(date);
         let color = 'inherit';
@@ -619,6 +619,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
     {
       title: 'Actions',
       key: 'actions',
+      fixed: 'right',
       render: (_, record) => {
         const canDelete = hasPermission(user, 'file_management', 'delete');
      const canAssign = isAdmin;
@@ -894,18 +895,27 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
             ...tableStyles.table,
             overflowX: 'auto'
           }}
-          onRow={(record, index) => ({
-            style: {
-              ...tableStyles.bodyCell,
-              ...(index === filteredFiles.length - 1 ? tableStyles.lastRow : {}),
-            },
-            onMouseEnter: (event) => {
-              event.currentTarget.style.background = tableStyles.hoverRow.background;
-            },
-            onMouseLeave: (event) => {
-              event.currentTarget.style.background = '';
-            },
-          })}
+          onRow={(record, index) => {
+            let backgroundColor = '';
+            if (record.status === 'Accepted') {
+              backgroundColor = '#f6ffed'; // light green for accepted
+            } else if (record.status === 'Pending') {
+              backgroundColor = '#fff7e6'; // light orange for pending
+            }
+            return {
+              style: {
+                ...tableStyles.bodyCell,
+                ...(index === filteredFiles.length - 1 ? tableStyles.lastRow : {}),
+                backgroundColor,
+              },
+              onMouseEnter: (event) => {
+                event.currentTarget.style.background = tableStyles.hoverRow.background;
+              },
+              onMouseLeave: (event) => {
+                event.currentTarget.style.background = backgroundColor || '';
+              },
+            };
+          }}
         />
     
 
@@ -1191,12 +1201,12 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                             </Text>
                             {selectedFile.startTime && (
                               <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                                Available from: {new Date(selectedFile.startTime).toLocaleString()}
+                                Available from: {dayjs(selectedFile.startTime).format('DD/MM/YYYY hh:mm:ss A')}
                               </Text>
                             )}
                             {selectedFile.endTime && (
                               <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                                Expires on: {new Date(selectedFile.endTime).toLocaleString()}
+                                Expires on: {dayjs(selectedFile.endTime).format('DD/MM/YYYY hh:mm:ss A')}
                               </Text>
                             )}
                           </div>
@@ -1229,7 +1239,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                                 return (
                                   <div style={{ marginTop: '4px' }}>
                                     <Text type="danger" style={{ fontSize: '12px' }}>
-                                      ⏰ Download not available until {startTime.toLocaleString()}
+                                      ⏰ Download not available until {dayjs(startTime).format('DD/MM/YYYY hh:mm:ss A')}
                                     </Text>
                                   </div>
                                 );
@@ -1237,15 +1247,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                                 return (
                                   <div style={{ marginTop: '4px' }}>
                                     <Text type="danger" style={{ fontSize: '12px' }}>
-                                      ⏰ Download expired on {endTime.toLocaleString()}
-                                    </Text>
-                                  </div>
-                                );
-                              } else {
-                                return (
-                                  <div style={{ marginTop: '4px' }}>
-                                    <Text type="success" style={{ fontSize: '12px' }}>
-                                      ✅ Download available now
+                                      ⏰ Download expired on {dayjs(endTime).format('DD/MM/YYYY hh:mm:ss A')}
                                     </Text>
                                   </div>
                                 );

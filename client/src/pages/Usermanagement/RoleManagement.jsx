@@ -185,6 +185,17 @@ const RoleManagement = () => {
       return;
     }
 
+    const role = roles.find(r => r._id === roleId);
+    if (!role) {
+      message.error('Role not found');
+      return;
+    }
+
+    if (role.name === 'admin') {
+      message.error('Admin role status cannot be changed');
+      return;
+    }
+
     try {
       const newStatus = !currentStatus;
       await updateRole(roleId, { isActive: newStatus });
