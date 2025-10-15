@@ -95,6 +95,13 @@ const FileSchema = new mongoose.Schema({
     type: Date,
     required: false
   },
+  group: {
+    type: String,
+    required: false,
+    default: 'Default University',
+    trim: true,
+    maxlength: [100, 'Group name cannot be more than 100 characters']
+  },
   createdAt: {
     type: Date,
     default: Date.now

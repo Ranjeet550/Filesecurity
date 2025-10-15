@@ -48,6 +48,7 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [form] = Form.useForm();
   const [isMobile, setIsMobile] = useState(false);
+  const [availableGroups, setAvailableGroups] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -73,6 +74,11 @@ const UserManagement = () => {
       setLoading(true);
       const response = await getUsers();
       setUsers(response.data);
+
+      // Extract unique groups from users
+      const uniqueGroups = [...new Set(response.data.map(user => user.group).filter(group => group))];
+      setAvailableGroups(uniqueGroups);
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -114,7 +120,8 @@ const UserManagement = () => {
     form.setFieldsValue({
       name: user.name,
       email: user.email,
-      role: user.role?._id || user.role
+      role: user.role?._id || user.role,
+      group: user.group || ''
     });
     setModalVisible(true);
   };
@@ -253,10 +260,10 @@ const UserManagement = () => {
           const isAdmin = roleName === 'admin';
 
           return (
-            <Tag 
-              color={isAdmin ? '#00BF96' : '#1890ff'} 
-              style={{ 
-                borderRadius: '12px', 
+            <Tag
+              color={isAdmin ? '#00BF96' : '#1890ff'}
+              style={{
+                borderRadius: '12px',
                 padding: isMobile ? '0 6px' : '0 8px',
                 fontSize: isMobile ? '12px' : '14px'
               }}
@@ -270,6 +277,17 @@ const UserManagement = () => {
             </Tag>
           );
         },
+      },
+      {
+        title: 'Group',
+        dataIndex: 'group',
+        key: 'group',
+        width: isMobile ? '20%' : '15%',
+        render: (group) => (
+          <Tag color="purple" style={{ borderRadius: '12px', fontSize: isMobile ? '12px' : '14px' }}>
+            {group || 'Not Set'}
+          </Tag>
+        ),
       }
     ];
 
@@ -582,6 +600,17 @@ const UserManagement = () => {
                 </Option>
               ))}
             </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="group"
+            label="Group/University"
+            rules={[{ required: true, message: 'Please enter group/university name' }]}
+          >
+            <Input
+              prefix={<TeamOutlined style={{ color: '#00BF96' }} />}
+              placeholder="Enter group or university name"
+            />
           </Form.Item>
         </Form>
       </Modal>

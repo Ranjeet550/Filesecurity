@@ -60,7 +60,7 @@ exports.getUser = async (req, res) => {
 // @access  Private/Admin
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, group } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -99,7 +99,8 @@ exports.createUser = async (req, res) => {
       name,
       email,
       password,
-      role: roleId
+      role: roleId,
+      group
     });
 
     // Populate role for response
@@ -128,7 +129,7 @@ exports.createUser = async (req, res) => {
 // @access  Private/Admin
 exports.updateUser = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { name, email, role, group } = req.body;
 
     // Find user
     let user = await User.findById(req.params.id);
@@ -165,7 +166,7 @@ exports.updateUser = async (req, res) => {
     // Update user
     user = await User.findByIdAndUpdate(
       req.params.id,
-      { name, email, role },
+      { name, email, role, group },
       { new: true, runValidators: true }
     ).select('-password').populate('role', 'name displayName');
 

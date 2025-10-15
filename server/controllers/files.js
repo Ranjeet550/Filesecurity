@@ -73,6 +73,7 @@ exports.uploadFile = async (req, res) => {
     const subject = metadata.subject || req.body.subject || '';
     const session = metadata.session || req.body.session || '';
     const semyear = metadata.semyear || req.body.semyear || '';
+    const group = metadata.group || req.body.group || req.user.group || '';
     const startTime = metadata.startTime || req.body.startTime ? new Date(metadata.startTime || req.body.startTime) : null;
     const endTime = metadata.endTime || req.body.endTime ? new Date(metadata.endTime || req.body.endTime) : null;
     console.log('Location data extracted:', userLocation);
@@ -222,6 +223,7 @@ exports.uploadFile = async (req, res) => {
       subject: subject,
       session: session,
       semyear: semyear,
+      group: group,
       startTime: startTime,
       endTime: endTime
     });
@@ -275,23 +277,31 @@ exports.getFiles = async (req, res) => {
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
 
-    let selectFields = 'originalName size createdAt downloads mimetype uploadLocation assignedTo uploadedBy status QPdetails Subcourse subject session semyear startTime endTime';
+    let selectFields = 'originalName size createdAt downloads mimetype uploadLocation assignedTo uploadedBy status QPdetails Subcourse subject session semyear group startTime endTime';
     if (isAdmin) {
       // Include password for admin users
       selectFields += ' password';
     }
 
     if (isAdmin) {
-      // Admin can only see files uploaded by them
-      query = { uploadedBy: req.user.id };
-      console.log('Admin user requesting their uploaded files');
+      // Admin can see all files but can filter by group
+      const { group } = req.query;
+      if (group && group !== 'all') {
+        query = { group: group };
+      } else {
+        query = {}; // Admin sees all files if no group filter
+      }
+      console.log('Admin user requesting files', group ? `for group: ${group}` : 'for all groups');
     } else {
-      // Regular users can only see files assigned to them or uploaded by them
-      query = { $or: [
-        { assignedTo: req.user.id },
-        { uploadedBy: req.user.id }
-      ] };
-      console.log(`User ${req.user.email} requesting their assigned files`);
+      // Regular users can only see files from their group that are assigned to them or uploaded by them
+      query = {
+        group: req.user.group,
+        $or: [
+          { assignedTo: req.user.id },
+          { uploadedBy: req.user.id }
+        ]
+      };
+      console.log(`User ${req.user.email} requesting files for their group: ${req.user.group}`);
     }
 
     let filesQuery = File.find(query)

@@ -24,7 +24,8 @@ import {
   DatePicker
 } from 'antd';
 import {
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -126,6 +127,13 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       setAllUsers([]);
       setUserMap({});
     }
+  };
+
+  // Get unique groups from users for filtering
+  const getAvailableGroups = () => {
+    const userGroups = allUsers.map(user => user.group).filter(group => group);
+    const fileGroups = files.map(file => file.group).filter(group => group);
+    return [...new Set([...userGroups, ...fileGroups])];
   };
 
   // Open assign modal
@@ -237,6 +245,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [groupFilter, setGroupFilter] = useState('all');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -259,6 +268,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         const subject = (file.subject || '').toLowerCase();
         const session = (file.session || '').toLowerCase();
         const semyear = (file.semyear || '').toLowerCase();
+        const group = (file.group || '').toLowerCase();
         return (
           fileName.includes(searchLower) ||
           uploadedByName.includes(searchLower) ||
@@ -267,7 +277,8 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
           subcourse.includes(searchLower) ||
           subject.includes(searchLower) ||
           session.includes(searchLower) ||
-          semyear.includes(searchLower)
+          semyear.includes(searchLower) ||
+          group.includes(searchLower)
         );
       });
     })();
@@ -279,8 +290,15 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       return status.toLowerCase() === statusFilter;
     });
 
-    return listByStatus;
-  }, [files, searchTerm, isAdmin, statusFilter]);
+    // Then apply group filter (admin only)
+    const listByGroup = listByStatus.filter(file => {
+      if (!isAdmin || groupFilter === 'all') return true;
+      const fileGroup = (file.group || '');
+      return fileGroup.toLowerCase() === groupFilter.toLowerCase();
+    });
+
+    return listByGroup;
+  }, [files, searchTerm, isAdmin, statusFilter, groupFilter]);
 
   // Download modal state
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
@@ -455,6 +473,16 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
       render: (text) => text || '-',
       ellipsis: true,
       width: '100px',
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: 'Group',
+      dataIndex: 'group',
+      key: 'group',
+      render: (text) => text || '-',
+      ellipsis: true,
+      width: '120px',
       onHeaderCell: () => ({ style: tableStyles.headerCell }),
       onCell: () => ({ style: tableStyles.bodyCell }),
     },
@@ -840,21 +868,40 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
                 }}
               />
             </Col>
-            <Col xs={24} sm={12} md={12} lg={8} xl={6}>
+            <Col xs={24} sm={12} md={6} lg={4} xl={3}>
               <Select
                 value={statusFilter}
                 onChange={(val) => {
                   setStatusFilter(val);
                   setCurrentPage(1);
                 }}
-                style={{ width: '50%' }}
+                style={{ width: '100%' }}
               >
                 <Select.Option value="all">All Status</Select.Option>
                 <Select.Option value="pending">Pending</Select.Option>
                 <Select.Option value="accepted">Accepted</Select.Option>
               </Select>
             </Col>
-            <Col xs={24} sm={12} md={12} lg={8} xl={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {isAdmin && (
+              <Col xs={24} sm={12} md={6} lg={4} xl={3}>
+                <Select
+                  value={groupFilter}
+                  onChange={(val) => {
+                    setGroupFilter(val);
+                    setCurrentPage(1);
+                  }}
+                  style={{ width: '100%' }}
+                  placeholder="Filter by Group"
+                >
+                  <Select.Option value="all">All Groups</Select.Option>
+                  {/* Get unique groups from both users and files */}
+                  {getAvailableGroups().map(group => (
+                    <Select.Option key={group} value={group}>{group}</Select.Option>
+                  ))}
+                </Select>
+              </Col>
+            )}
+            <Col xs={24} sm={12} md={12} lg={8} xl={6} style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
@@ -932,7 +979,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         footer={null}
         width={400}
         style={{ top: 20 }}
-        bodyStyle={{ padding: '24px' }}
+        styles={{ body: { padding: '24px' } }}
       >
         <Form
           form={assignForm}
@@ -953,21 +1000,47 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
               loading={allUsers.length === 0}
               optionFilterProp="children"
               showSearch
+              dropdownStyle={{ maxWidth: '600px' }}
               filterOption={(input, option) =>
                 option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
             >
               {allUsers
                 .filter(u => u._id !== assignFile?.uploadedBy?._id && u._id !== assignFile?.uploadedBy)
-                .map(user => (
-                  <Select.Option
-                    key={user._id}
-                    value={user._id}
-                    disabled={Array.isArray(assignFile?.assignedTo) && assignFile.assignedTo.includes(user._id)}
-                  >
-                    {user.name} ({user.email})
-                  </Select.Option>
-                ))}
+                .map(user => {
+                  const groupName = user.group || 'No Group';
+                  const groupColor = groupName === 'No Group' ? '#8c8c8c' :
+                    groupName.includes('IIT') ? '#1890ff' :
+                    groupName.includes('NIT') ? '#52c41a' : '#722ed1';
+
+                  return (
+                    <Select.Option
+                      key={user._id}
+                      value={user._id}
+                      disabled={Array.isArray(assignFile?.assignedTo) && assignFile.assignedTo.includes(user._id)}
+                      title={`${user.name} (${user.email}) - ${groupName}`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{user.name}</span>
+                        <span style={{ color: '#8c8c8c', fontSize: '12px' }}>({user.email})</span>
+                        <span style={{
+                          backgroundColor: groupColor,
+                          color: 'white',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2px'
+                        }}>
+                          <TeamOutlined style={{ fontSize: '10px' }} />
+                          {groupName}
+                        </span>
+                      </div>
+                    </Select.Option>
+                  );
+                })}
             </Select>
           </Form.Item>
           {assignError && (
@@ -1018,7 +1091,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         footer={null}
         width={450}
         style={{ top: 20 }}
-        bodyStyle={{ padding: '24px' }}
+        styles={{ body: { padding: '24px' } }}
       >
         <Form
           form={timingForm}
@@ -1117,7 +1190,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin }) => {
         footer={null}
         width={450}
         style={{ top: 20 }}
-        bodyStyle={{ padding: '24px' }}
+        styles={{ body: { padding: '24px' } }}
       >
         {downloadLoading ? (
           <div style={{ textAlign: 'center', padding: '24px' }}>

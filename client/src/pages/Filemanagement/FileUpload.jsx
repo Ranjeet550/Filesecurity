@@ -35,13 +35,15 @@ import {
   CloudUploadOutlined,
   SecurityScanOutlined,
   InfoCircleOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
 import { uploadFile } from '../../api/fileService';
 import { encryptFile } from '../../utils/fileEncryption';
 import AuthContext from '../../context/AuthContext';
+import { getUsers } from '../../api/userService';
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -57,6 +59,7 @@ const FileUpload = () => {
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [useCustomPassword, setUseCustomPassword] = useState(false);
   const [customPassword, setCustomPassword] = useState('');
+  const [availableGroups, setAvailableGroups] = useState([]);
 
   // Additional file details for admin
   const [QPdetails, setQPdetails] = useState('');
@@ -64,6 +67,7 @@ const FileUpload = () => {
   const [subject, setSubject] = useState('');
   const [session, setSession] = useState('');
   const [semyear, setSemyear] = useState('');
+  const [group, setGroup] = useState(user?.group || '');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
@@ -95,10 +99,24 @@ const FileUpload = () => {
     message.success('New password generated successfully!');
   };
 
-  // Generate password on component mount
+  // Generate password on component mount and fetch available groups
   useEffect(() => {
     generatePassword();
+    fetchAvailableGroups();
   }, []);
+
+  const fetchAvailableGroups = async () => {
+    try {
+      const response = await getUsers();
+      if (response.data) {
+        // Get unique groups from users
+        const uniqueGroups = [...new Set(response.data.map(user => user.group).filter(group => group))];
+        setAvailableGroups(uniqueGroups);
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    }
+  };
 
   const handleUpload = async () => {
     if (fileList.length === 0) {
@@ -147,6 +165,7 @@ const FileUpload = () => {
       fileWithPassword.subject = subject;
       fileWithPassword.session = session;
       fileWithPassword.semyear = semyear;
+      fileWithPassword.group = group;
       fileWithPassword.startTime = startTime;
       fileWithPassword.endTime = endTime;
 
@@ -739,7 +758,7 @@ const FileUpload = () => {
                     {[...Array(5)].map((_, index) => {
                       const currentPassword = useCustomPassword ? customPassword : generatedPassword;
                       let color = '#f0f0f0';
-                      
+
                       if (currentPassword.length >= 8) {
                         if (index < 2) color = '#ff4d4f'; // Weak
                         else if (index < 4) color = '#faad14'; // Medium
@@ -750,7 +769,7 @@ const FileUpload = () => {
                       } else if (currentPassword.length >= 4) {
                         color = '#52c41a'; // Strong
                       }
-                      
+
                       return (
                         <div
                           key={index}
@@ -765,8 +784,8 @@ const FileUpload = () => {
                       );
                     })}
                   </div>
-                  <Text style={{ 
-                    fontSize: '11px', 
+                  <Text style={{
+                    fontSize: '11px',
                     color: (useCustomPassword ? customPassword : generatedPassword).length >= 8 ? '#52c41a' : '#faad14',
                     marginTop: '4px',
                     display: 'block'
@@ -774,6 +793,46 @@ const FileUpload = () => {
                     {(useCustomPassword ? customPassword : generatedPassword).length >= 8 ? 'Strong Password' : 'Password too short'}
                   </Text>
                 </div>
+
+                {/* Group Selection - Only for Admins */}
+                {user?.role?.name === 'admin' && (
+                  <div style={{ marginTop: '16px' }}>
+                    <Text style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#262626',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <TeamOutlined style={{ marginRight: '6px', color: '#1890ff', fontSize: '14px' }} />
+                      Group/University
+                    </Text>
+                    <Select
+                      value={group}
+                      onChange={(value) => setGroup(value)}
+                      placeholder="Select group/university"
+                      size="small"
+                      style={{ marginTop: '6px', width: '45%' }}
+                      showSearch
+                    >
+                      {availableGroups.map(groupName => (
+                        <Select.Option key={groupName} value={groupName}>
+                          {groupName}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                    <div>
+                      <Text style={{
+                        fontSize: '12px',
+                       
+                        fontWeight: '500'
+                      }}>
+                        <InfoCircleOutlined style={{ marginRight: '6px', fontSize: '14px' }} />
+                        Select the university/group this file belongs to. Only users from this group will see this file.
+                      </Text>
+                    </div>
+                  </div>
+                )}
               </Card>
 
               {/* Additional File Details Section (Admin Only) */}

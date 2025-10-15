@@ -38,6 +38,13 @@ const UserSchema = new mongoose.Schema({
     ref: 'Role',
     required: true
   },
+  group: {
+    type: String,
+    required: false,
+    default: 'Default University',
+    trim: true,
+    maxlength: [100, 'Group name cannot be more than 100 characters']
+  },
   lastLogin: {
     type: Date,
     default: Date.now

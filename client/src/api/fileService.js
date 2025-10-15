@@ -140,6 +140,7 @@ export const uploadFile = async (file) => {
       subject: file.subject || '',
       session: file.session || '',
       semyear: file.semyear || '',
+      group: file.group || '',
       startTime: file.startTime || null,
       endTime: file.endTime || null
     };
