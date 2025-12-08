@@ -128,8 +128,8 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        height: '64px',
-        minHeight: '64px',
+        height: '100px',
+        minHeight: '100px',
         position: 'fixed',
         top: 0,
         left: screens.md ? (collapsed ? 80 : 250) : 0,
@@ -208,18 +208,20 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
           left: '50%',
           transform: 'translateX(-50%)',
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          
+          
         }}>
           <Image
             src={groupImageUrl}
             alt={`${user?.group} group image`}
             style={{
-              width: '70px',
-              height: '60px',
-              objectFit: 'cover',
-              borderRadius: '50%',
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+              width: '100%',
+              height: '90px',
+              objectFit: 'contain',
+              borderRadius: '4%',
+
+
             }}
             preview={false}
             onError={() => setGroupImageUrl(null)}

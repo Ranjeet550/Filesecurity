@@ -228,7 +228,7 @@ const Profile = () => {
       {/* Add style tag for custom CSS */}
       <style>{avatarOverlayStyle}</style>
 
-      <div className="profile-container" style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px' }}>
+      <div className="profile-container" style={{ maxWidth: '900px', margin: '80px auto 0', padding: '0 24px' }}>
         
 
         <Row gutter={[16, 16]}>

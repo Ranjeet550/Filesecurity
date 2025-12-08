@@ -67,7 +67,7 @@ const ChangePassword = () => {
   if (success) {
     return (
       <Sidebar >
-        <div className="fade-in" style={{ maxWidth: '500px', margin: '0 auto' }}>
+        <div className="fade-in" style={{ maxWidth: '500px', margin: '80px auto 0' }}>
           <Card
             className="dashboard-card"
             style={{
@@ -109,7 +109,7 @@ const ChangePassword = () => {
 
   return (
     <Sidebar >
-      <div className="fade-in" style={{ maxWidth: '500px', margin: '0 auto' }}>
+      <div className="fade-in" style={{ maxWidth: '500px', margin: '80px auto 0' }}>
         
 
         <Card
