@@ -5,6 +5,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:50
 export const AUTH_API_URL = `${API_BASE_URL}/auth`;
 export const FILES_API_URL = `${API_BASE_URL}/files`;
 export const USERS_API_URL = `${API_BASE_URL}/users`;
+export const SETTINGS_API_URL = `${API_BASE_URL}/settings`;
 
 // Other configuration
 export const APP_NAME = 'Secure File Transfer';

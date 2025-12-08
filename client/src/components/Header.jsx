@@ -1,4 +1,4 @@
-import { Button, Avatar, Dropdown, Grid, theme } from 'antd';
+import { Button, Avatar, Dropdown, Grid, theme, Image } from 'antd';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -8,8 +8,10 @@ import {
   MenuOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useContext } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import AuthContext from '../context/AuthContext';
+import { getAllGroupImages } from '../api/settingsService';
+import { storage } from '../utils/storage';
 
 const { useBreakpoint } = Grid;
 
@@ -21,6 +23,62 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
   const {
     token: { colorPrimary },
   } = theme.useToken();
+
+  const [groupImageUrl, setGroupImageUrl] = useState(null);
+  const [groupImages, setGroupImages] = useState({});
+
+  useEffect(() => {
+    // Fetch all group images
+    const fetchGroupImages = async () => {
+      try {
+        const response = await getAllGroupImages();
+        const images = {};
+
+        // Create object URLs for each group image
+        for (const [groupName, imageData] of Object.entries(response.data)) {
+          try {
+            // Fetch the image as blob
+            const imageResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/settings/group-image/${groupName}`, {
+              headers: {
+                'Authorization': `Bearer ${storage.getToken()}`
+              }
+            });
+
+            if (imageResponse.ok) {
+              const blob = await imageResponse.blob();
+              images[groupName] = URL.createObjectURL(blob);
+            }
+          } catch (error) {
+            console.error(`Failed to load image for group ${groupName}:`, error);
+          }
+        }
+
+        setGroupImages(images);
+      } catch (error) {
+        console.error('Error fetching group images:', error);
+      }
+    };
+
+    fetchGroupImages();
+
+    // Cleanup function to revoke object URLs
+    return () => {
+      Object.values(groupImages).forEach(url => {
+        if (url && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    // Set group image URL if user has a group
+    if (user?.group && groupImages[user.group]) {
+      setGroupImageUrl(groupImages[user.group]);
+    } else {
+      setGroupImageUrl(null);
+    }
+  }, [user?.group, groupImages]);
 
   const handleLogout = () => {
     logout();
@@ -82,6 +140,7 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
         width: screens.md ? `calc(100% - ${collapsed ? 80 : 250}px)` : '100%'
       }}
     >
+      {/* Left side - Menu button and route name */}
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <Button
           type="text"
@@ -126,15 +185,47 @@ const Header = ({ collapsed, setCollapsed, onMobileMenuClick }) => {
         }}>
           {location.pathname === '/dashboard' && !location.search.includes('view=all-files') && 'Dashboard'}
           {location.pathname === '/upload' && 'Upload File'}
+          {location.pathname === '/file-upload' && 'Single File Upload'}
+          {location.pathname === '/folder-upload' && 'Folder Upload'}
           {location.pathname === '/users' && 'Users'}
           {location.pathname === '/roles' && 'Roles'}
-          {location.pathname === '/permissions' && 'Permission'}
+          {location.pathname === '/permissions' && 'Permissions'}
+          {location.pathname === '/modules' && 'Modules'}
+          {location.pathname === '/settings' && 'Settings'}
+          {location.pathname === '/group-images' && 'Group Images'}
+          {location.pathname.startsWith('/download/') && 'Download File'}
 
           {location.pathname === '/change-password' && 'Change Password'}
           {location.pathname === '/profile' && 'My Profile'}
           {location.pathname === '/dashboard' && location.search.includes('view=all-files') && 'All Files'}
         </h2>
       </div>
+
+      {/* Center - Group image */}
+      {groupImageUrl && (
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <Image
+            src={groupImageUrl}
+            alt={`${user?.group} group image`}
+            style={{
+              width: '70px',
+              height: '60px',
+              objectFit: 'cover',
+              borderRadius: '50%',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+            }}
+            preview={false}
+            onError={() => setGroupImageUrl(null)}
+          />
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <Dropdown
           menu={{

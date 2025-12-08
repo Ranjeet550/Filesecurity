@@ -20,11 +20,12 @@ exports.acceptFile = async (req, res) => {
   }
 };
 const File = require('../models/File');
+const Setting = require('../models/Setting');
 const fs = require('fs');
 const path = require('path');
 const { logActivity } = require('../middleware/logger');
 const { encryptFile } = require('../utils/fileEncryption');
-const { protectUploadedPDF, protectUploadedExcel } = require('../utils/pdfProtection');
+const { protectUploadedPDF, protectUploadedExcel, protectUploadedZIP } = require('../utils/pdfProtection');
 const { encryptResponse, decryptRequest } = require('../utils/responseEncryption');
 const { xorDecrypt } = require('../utils/fileEncryption');
 
@@ -74,6 +75,7 @@ exports.uploadFile = async (req, res) => {
     const session = metadata.session || req.body.session || '';
     const semyear = metadata.semyear || req.body.semyear || '';
     const group = metadata.group || req.body.group || req.user.group || '';
+    const remark = metadata.remark || req.body.remark || '';
     const startTime = metadata.startTime || req.body.startTime ? new Date(metadata.startTime || req.body.startTime) : null;
     const endTime = metadata.endTime || req.body.endTime ? new Date(metadata.endTime || req.body.endTime) : null;
     console.log('Location data extracted:', userLocation);
@@ -175,7 +177,7 @@ exports.uploadFile = async (req, res) => {
         console.log('Continuing with original file due to protection error');
       }
     } else if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-               mimeType === 'application/vnd.ms-excel') {
+                mimeType === 'application/vnd.ms-excel') {
       try {
         console.log('Excel file detected, applying password protection...');
         const protectionResult = await protectUploadedExcel(
@@ -205,6 +207,40 @@ exports.uploadFile = async (req, res) => {
         // Continue with original file if protection fails
         console.log('Continuing with original file due to protection error');
       }
+    } else if (mimeType === 'application/zip' || mimeType === 'application/x-zip-compressed') {
+      try {
+        console.log('ZIP file detected, applying individual password protection to PDF/Excel files...');
+        const protectionResult = await protectUploadedZIP(
+          normalizedPath,
+          password,
+          uploadedFile.originalname
+        );
+
+        if (protectionResult.success) {
+          finalFilePath = protectionResult.protectedFilePath;
+          finalFilename = protectionResult.protectedFileName;
+
+          // Get the size of the protected ZIP file
+          const stats = fs.statSync(finalFilePath);
+          finalSize = stats.size;
+
+          // Use the password mapping instead of single password
+          password = protectionResult.password;
+
+          console.log('ZIP protection successful:', {
+            originalPath: normalizedPath,
+            protectedPath: finalFilePath,
+            originalSize: uploadedFile.size,
+            protectedSize: finalSize,
+            protection: protectionResult.protection,
+            passwordMapping: password
+          });
+        }
+      } catch (error) {
+        console.error('Error protecting ZIP file:', error);
+        // Continue with original file if protection fails
+        console.log('Continuing with original file due to protection error');
+      }
     }
 
     // Create file record in database
@@ -224,6 +260,7 @@ exports.uploadFile = async (req, res) => {
       session: session,
       semyear: semyear,
       group: group,
+      remark: remark,
       startTime: startTime,
       endTime: endTime
     });
@@ -277,7 +314,7 @@ exports.getFiles = async (req, res) => {
     const userRole = req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
 
-    let selectFields = 'originalName size createdAt downloads mimetype uploadLocation assignedTo uploadedBy status QPdetails Subcourse subject session semyear group startTime endTime';
+    let selectFields = 'originalName size createdAt downloads mimetype uploadLocation assignedTo uploadedBy status QPdetails Subcourse subject session semyear group remark startTime endTime';
     if (isAdmin) {
       // Include password for admin users
       selectFields += ' password';
@@ -293,15 +330,14 @@ exports.getFiles = async (req, res) => {
       }
       console.log('Admin user requesting files', group ? `for group: ${group}` : 'for all groups');
     } else {
-      // Regular users can only see files from their group that are assigned to them or uploaded by them
+      // Regular users can see files that are assigned to them OR uploaded by them (regardless of group)
       query = {
-        group: req.user.group,
         $or: [
           { assignedTo: req.user.id },
           { uploadedBy: req.user.id }
         ]
       };
-      console.log(`User ${req.user.email} requesting files for their group: ${req.user.group}`);
+      console.log(`User ${req.user.email} requesting files assigned to them or uploaded by them`);
     }
 
     let filesQuery = File.find(query)
@@ -453,8 +489,9 @@ exports.downloadFile = async (req, res) => {
       }));
     }
 
-    // Verify password
-    if (!file.verifyPassword(password)) {
+    // Verify password (skip for ZIP files as they have individual file passwords)
+    const isZip = file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed';
+    if (!isZip && !file.verifyPassword(password)) {
       return res.status(401).json(encryptResponse({
         success: false,
         message: 'Invalid password'
@@ -476,10 +513,37 @@ exports.downloadFile = async (req, res) => {
       }));
     }
 
+    // Check download limit for authenticated users
+    if (req.user && req.user.id) {
+      try {
+        // Get the download limit setting
+        const downloadLimitSetting = await Setting.findOne({ key: 'downloadLimit' });
+        const downloadLimit = downloadLimitSetting ? downloadLimitSetting.value : 1; // Default to 1 if not set
+        console.log('Download limit setting:', downloadLimitSetting, 'Limit:', downloadLimit);
+
+        // Count how many times this user has downloaded this file
+        const userDownloadCount = file.downloads.filter(download => {
+          const downloadUserId = download.user ? download.user.toString() : null;
+          return downloadUserId === req.user.id.toString();
+        }).length;
+        console.log('User download count:', userDownloadCount, 'User ID:', req.user.id);
+
+        // Check if user has exceeded the download limit
+        if (userDownloadCount >= downloadLimit) {
+          console.log('Download limit exceeded:', userDownloadCount, '>=', downloadLimit);
+          return res.status(403).json(encryptResponse({
+            success: false,
+            message: `Download limit exceeded. You can download this file up to ${downloadLimit} time(s).`
+          }));
+        }
+        console.log('Download allowed, count:', userDownloadCount, 'limit:', downloadLimit);
+      } catch (error) {
+        console.error('Error checking download limit:', error);
+        // Continue with download if there's an error checking the limit
+      }
+    }
+
     // Record download information (always record, even for anonymous downloads)
-    console.log('Recording download for file:', file._id, 'User:', req.user ? req.user.id : 'anonymous');
-    
-    // Ensure location data is available
     const downloadLocation = req.userLocation || {
       latitude: 0,
       longitude: 0,
@@ -492,7 +556,6 @@ exports.downloadFile = async (req, res) => {
       location: downloadLocation
     });
     await file.save();
-    console.log('Download recorded. Total downloads for this file:', file.downloads.length);
 
     // Check if file exists on disk
     // Try different path resolutions to find the file
@@ -598,6 +661,7 @@ exports.downloadFile = async (req, res) => {
         '.xls': 'application/vnd.ms-excel',
         '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         '.zip': 'application/zip',
+        '.7z': 'application/x-7z-compressed',
         '.txt': 'text/plain',
         '.mp3': 'audio/mpeg',
         '.mp4': 'video/mp4'
@@ -651,6 +715,24 @@ exports.downloadFile = async (req, res) => {
         console.log('Excel originalName from DB:', file.originalName);
 
         // Send the password-protected Excel file directly
+        fs.createReadStream(absolutePath).pipe(res);
+      } else if (mimeType === 'application/zip' || mimeType === 'application/x-zip-compressed') {
+        console.log('Serving ZIP file directly (password protection failed or not applied)');
+
+        // Set headers for ZIP download with original filename
+        const zipFilename = file.originalName;
+        res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Pragma', 'no-cache');
+
+        // Log headers for debugging
+        console.log('ZIP Response headers:', res.getHeaders());
+        console.log('ZIP filename being sent:', zipFilename);
+        console.log('ZIP originalName from DB:', file.originalName);
+
+        // Send the ZIP file directly (not encrypted)
         fs.createReadStream(absolutePath).pipe(res);
       } else {
         // For non-PDF files, decrypt and send the original file
@@ -816,7 +898,70 @@ exports.updateFileTiming = async (req, res) => {
   }
 };
 
-// @desc    Delete file
+// @desc    Unassign file from a user (remove from assignedTo array)
+// @route   DELETE /api/files/:id/unassign/:userId
+// @access  Private (admin only)
+exports.unassignFileFromUser = async (req, res) => {
+  try {
+    const userRole = req.user.role;
+    const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+    
+    if (!isAdmin) {
+      return res.status(403).json(encryptResponse({ 
+        success: false, 
+        message: 'Only admin can unassign files.' 
+      }));
+    }
+
+    const fileId = req.params.id;
+    const userId = req.params.userId;
+
+    const file = await File.findById(fileId);
+    if (!file) {
+      return res.status(404).json(encryptResponse({ 
+        success: false, 
+        message: 'File not found.' 
+      }));
+    }
+
+    // Remove user from assignedTo array
+    file.assignedTo = file.assignedTo.filter(id => id.toString() !== userId);
+    await file.save();
+
+    // Log unassignment activity
+    await logActivity({
+      user: req.user._id,
+      ipAddress: req.ip || req.connection.remoteAddress || 'Unknown',
+      activityType: 'file',
+      action: 'unassign',
+      description: `File "${file.originalName}" unassigned from user`,
+      data: {
+        fileId: file._id,
+        filename: file.originalName,
+        unassignedUserId: userId
+      },
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: 200,
+      location: req.userLocation || { latitude: 0, longitude: 0, city: 'Unknown', country: 'Unknown' },
+      userAgent: req.headers['user-agent'] || 'Unknown'
+    });
+
+    res.status(200).json(encryptResponse({ 
+      success: true, 
+      message: 'File unassigned from user successfully.',
+      data: file 
+    }));
+  } catch (error) {
+    console.error('Error in unassignFileFromUser:', error);
+    res.status(500).json(encryptResponse({ 
+      success: false, 
+      message: 'Server error' 
+    }));
+  }
+};
+
+// @desc    Delete file (only owner can permanently delete, admin just removes from their view)
 // @route   DELETE /api/files/:id
 // @access  Private (requires file_management delete permission)
 exports.deleteFile = async (req, res) => {
@@ -834,36 +979,33 @@ exports.deleteFile = async (req, res) => {
     // Permission middleware already checked for file_management delete permission
     const userRole = req.userRole || req.user.role;
     const isAdmin = userRole && (userRole.name === 'admin' || (typeof userRole === 'string' && userRole === 'admin'));
+    const isOwner = file.uploadedBy.toString() === req.user.id;
 
-    // Allow deletion if user is admin or owner of the file
-    if (file.uploadedBy.toString() !== req.user.id && !isAdmin) {
+    // Only owner or admin can delete
+    if (!isOwner && !isAdmin) {
       return res.status(403).json(encryptResponse({
         success: false,
         message: 'Not authorized to delete this file'
       }));
     }
 
-    // Delete file from disk
-    const filePath = path.join(__dirname, '..', file.path);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-
-    // Delete file from database
-    await file.deleteOne();
-
-    // Log file deletion activity
+    // NEVER delete files from database or disk - just hide from user's view
+    // Both admin and owner "deleting" keeps file in database for viewers
+    console.log(`User ${req.user.id} attempted to delete file ${file._id} - file kept in database for viewers`);
+    
+    // Log delete attempt (but file not actually deleted)
+    const userType = isAdmin ? 'Admin' : 'Owner';
     await logActivity({
       user: req.user._id,
       ipAddress: req.ip || req.connection.remoteAddress || 'Unknown',
       activityType: 'file',
-      action: 'delete',
-      description: `File "${file.originalName}" deleted successfully`,
+      action: 'delete_attempt',
+      description: `${userType} removed file "${file.originalName}" from their view (file kept for viewers)`,
       data: {
         fileId: file._id,
         filename: file.originalName,
-        size: file.size,
-        mimetype: file.mimetype
+        userType: userType,
+        note: 'File not deleted from database or disk'
       },
       method: req.method,
       path: req.originalUrl,

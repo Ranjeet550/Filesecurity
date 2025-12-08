@@ -141,6 +141,7 @@ export const uploadFile = async (file) => {
       session: file.session || '',
       semyear: file.semyear || '',
       group: file.group || '',
+      remark: file.remark || '',
       startTime: file.startTime || null,
       endTime: file.endTime || null
     };
@@ -399,6 +400,18 @@ export const updateFileTiming = async (fileId, timingData) => {
     return response.data;
   } catch (error) {
     console.error('Error updating file timing:', error);
+    throw error.response?.data || error.message;
+  }
+};
+
+// Unassign file from user (admin only)
+export const unassignFileFromUser = async (fileId, userId) => {
+  try {
+    const api = authAxios();
+    const response = await api.delete(`${FILES_API_URL}/${fileId}/unassign/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error unassigning file from user:', error);
     throw error.response?.data || error.message;
   }
 };

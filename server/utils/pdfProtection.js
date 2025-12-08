@@ -6,6 +6,11 @@ const path = require('path');
 const PdfPasswordProtector = require('pdf-password-protector');
 const XlsxPopulate = require('xlsx-populate');
 const crypto = require('crypto');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
+const archiver = require('archiver');
+const unzipper = require('unzipper');
 
 /**
  * Protects a PDF file with password using pdf-password-protector library
@@ -349,6 +354,186 @@ exports.createPasswordProtectedPDF = async (filePath, password, originalName, mi
 };
 
 /**
+ * Main function to protect uploaded ZIP files with individual passwords for PDF/Excel files
+ * @param {string} filePath - Path to the uploaded ZIP file
+ * @param {string} password - Not used for ZIP, individual passwords generated
+ * @param {string} originalName - Original name of the uploaded file
+ * @returns {Promise<Object>} - Object containing protected file path and details
+ */
+exports.protectUploadedZIP = async (filePath, password, originalName) => {
+  try {
+    console.log('Starting ZIP protection with individual passwords for PDF/Excel files:', originalName);
+
+    // Generate output path for protected ZIP file
+    const fileDir = path.dirname(filePath);
+    const baseName = path.basename(originalName, path.extname(originalName));
+    const protectedFileName = `${baseName}_protected.zip`;
+    const outputPath = path.join(fileDir, protectedFileName);
+
+    // Create a temporary directory for extraction
+    const tempDir = path.join(fileDir, `temp_${Date.now()}`);
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const passwordMapping = {};
+
+    try {
+      // Extract the uploaded ZIP file
+      console.log('Extracting ZIP file to temporary directory...');
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(unzipper.Extract({ path: tempDir }))
+          .on('close', resolve)
+          .on('error', reject);
+      });
+
+      console.log('ZIP extraction completed');
+
+      // Function to generate a random password
+      const generatePassword = () => {
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const numbers = '0123456789';
+        const specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+        let pwd = '';
+        pwd += lowercase[Math.floor(Math.random() * lowercase.length)];
+        pwd += uppercase[Math.floor(Math.random() * uppercase.length)];
+        pwd += numbers[Math.floor(Math.random() * numbers.length)];
+        pwd += specialChars[Math.floor(Math.random() * specialChars.length)];
+
+        const allChars = lowercase + uppercase + numbers + specialChars;
+        for (let i = 0; i < 6; i++) {
+          pwd += allChars[Math.floor(Math.random() * allChars.length)];
+        }
+
+        return pwd.split('').sort(() => Math.random() - 0.5).join('');
+      };
+
+      // Recursively process files and protect PDF/Excel
+      const processFilesRecursively = async (dirPath, archivePath = '') => {
+        const items = fs.readdirSync(dirPath);
+        for (const item of items) {
+          const itemPath = path.join(dirPath, item);
+          const stat = fs.statSync(itemPath);
+          const relativePath = path.join(archivePath, item);
+
+          if (stat.isDirectory()) {
+            // Recursively process directory
+            await processFilesRecursively(itemPath, relativePath);
+          } else {
+            // Check if it's PDF or Excel
+            const ext = path.extname(item).toLowerCase();
+            if (ext === '.pdf' || ext === '.xlsx' || ext === '.xls') {
+              console.log(`Protecting ${ext.toUpperCase()} file: ${relativePath}`);
+              const filePassword = generatePassword();
+              passwordMapping[relativePath] = filePassword;
+
+              try {
+                if (ext === '.pdf') {
+                  const protectedPath = await exports.protectPDFWithPassword(itemPath, itemPath + '_protected', filePassword);
+                  // Replace original with protected
+                  fs.unlinkSync(itemPath);
+                  fs.renameSync(protectedPath, itemPath);
+                } else if (ext === '.xlsx' || ext === '.xls') {
+                  const protectedPath = await exports.protectExcelWithPassword(itemPath, itemPath + '_protected', filePassword);
+                  // Replace original with protected
+                  fs.unlinkSync(itemPath);
+                  fs.renameSync(protectedPath, itemPath);
+                }
+              } catch (protectError) {
+                console.error(`Failed to protect ${relativePath}:`, protectError);
+                // Continue with original file if protection fails
+              }
+            }
+          }
+        }
+      };
+
+      await processFilesRecursively(tempDir);
+
+      // Create passwords.txt file
+      const passwordsTxtPath = path.join(tempDir, 'passwords.txt');
+      let passwordsContent = 'File Passwords:\n\n';
+      for (const [filePath, pwd] of Object.entries(passwordMapping)) {
+        passwordsContent += `${filePath}: ${pwd}\n`;
+      }
+      fs.writeFileSync(passwordsTxtPath, passwordsContent);
+
+      // Create the final ZIP archive
+      console.log('Creating final ZIP with protected files...');
+      const output = fs.createWriteStream(outputPath);
+      const archive = archiver('zip', {
+        zlib: { level: 9 } // Maximum compression
+      });
+
+      // Handle archive errors
+      archive.on('error', (err) => {
+        throw err;
+      });
+
+      // Pipe archive data to the output file
+      archive.pipe(output);
+
+      // Add all files to the new archive
+      const addFilesRecursively = (dirPath, archivePath = '') => {
+        const items = fs.readdirSync(dirPath);
+        for (const item of items) {
+          const itemPath = path.join(dirPath, item);
+          const stat = fs.statSync(itemPath);
+
+          if (stat.isDirectory()) {
+            addFilesRecursively(itemPath, path.join(archivePath, item));
+          } else {
+            archive.file(itemPath, { name: path.join(archivePath, item) });
+          }
+        }
+      };
+
+      addFilesRecursively(tempDir);
+
+      // Finalize the archive
+      await archive.finalize();
+
+      console.log('Protected ZIP creation completed');
+
+    } finally {
+      // Clean up temporary directory
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        console.log('Temporary directory cleaned up');
+      } catch (cleanupError) {
+        console.warn('Failed to clean up temporary directory:', cleanupError);
+      }
+    }
+
+    // Remove the original unprotected ZIP file for security
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log('Original unprotected ZIP file removed for security');
+    }
+
+    return {
+      success: true,
+      protectedFilePath: outputPath,
+      protectedFileName: protectedFileName,
+      originalName: originalName,
+      password: passwordMapping, // Return the mapping instead of single password
+      protection: {
+        type: 'ZIP with individually password-protected PDF/Excel files',
+        opening: 'No password required for ZIP, individual files have passwords',
+        modification: 'Individual file passwords required'
+      }
+    };
+  } catch (error) {
+    console.error('Error protecting uploaded ZIP:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
  * Creates a password-protected PDF that contains the original file as an embedded attachment
  * @param {string} filePath - Path to the original file
  * @param {string} password - Password to protect the PDF with
@@ -365,7 +550,7 @@ exports.createPasswordProtectedPDFWithEmbeddedFile = async (filePath, password, 
 
     // For non-PDF files, create a PDF with embedded file
     const pdfDoc = await PDFDocument.create();
-    
+
     // Set password protection
     pdfDoc.encrypt({
       userPassword: password,
@@ -383,7 +568,7 @@ exports.createPasswordProtectedPDFWithEmbeddedFile = async (filePath, password, 
 
     // Read the original file
     const fileBytes = fs.readFileSync(filePath);
-    
+
     // Embed the file as an attachment
     await pdfDoc.attach(fileBytes, originalName, {
       mimeType: mimeType,
@@ -427,7 +612,7 @@ exports.createPasswordProtectedPDFWithEmbeddedFile = async (filePath, password, 
     instructions.forEach((line) => {
       const fontSize = line.includes(':') ? 14 : 12;
       const textFont = line.includes(':') ? boldFont : font;
-      
+
       page.drawText(line, {
         x: 50,
         y: yPosition,
@@ -440,7 +625,7 @@ exports.createPasswordProtectedPDFWithEmbeddedFile = async (filePath, password, 
 
     // Generate the protected PDF
     const pdfBytes = await pdfDoc.save();
-    
+
     // Create output path
     const outputPath = path.join(
       path.dirname(filePath),

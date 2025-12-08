@@ -11,6 +11,7 @@ import AuthContext from './context/AuthContext';
 import Login from './pages/UserAuth/Login';
 import Dashboard from './pages/Filemanagement/Dashboard';
 import FileUpload from './pages/Filemanagement/FileUpload';
+import FolderUpload from './pages/Filemanagement/Folderupload';
 import FileDownload from './pages/Filemanagement/FileDownload';
 import UserManagement from './pages/Usermanagement/Alluser';
 import RoleManagement from './pages/Usermanagement/RoleManagement';
@@ -22,6 +23,9 @@ import OTPVerification from './pages/UserAuth/OTPVerification';
 import ResetPassword from './pages/UserAuth/ResetPassword';
 import ChangePassword from './pages/UserAuth/ChangePassword';
 import Profile from './pages/UserAuth/Profile';
+import Configuration from './pages/Settings/Configuration';
+import Groupimage from './pages/Settings/Groupimage';
+import Session from './pages/Settings/Session';
 
 
 // Context
@@ -108,6 +112,16 @@ function AppRoutes() {
             <FileUpload />
           </PermissionRoute>
         } />
+        <Route path="/file-upload" element={
+          <PermissionRoute user={user} token={token} moduleName="file_management" action="create">
+            <FileUpload />
+          </PermissionRoute>
+        } />
+        <Route path="/folder-upload" element={
+          <PermissionRoute user={user} token={token} moduleName="file_management" action="create">
+            <FolderUpload />
+          </PermissionRoute>
+        } />
         <Route path="/change-password" element={
           <PrivateRoute user={user} token={token}>
             <ChangePassword />
@@ -117,6 +131,21 @@ function AppRoutes() {
           <PrivateRoute user={user} token={token}>
             <Profile />
           </PrivateRoute>
+        } />
+        <Route path="/settings" element={
+          <PermissionRoute user={user} token={token} moduleName="settings" action="read">
+            <Configuration />
+          </PermissionRoute>
+        } />
+        <Route path="/group-images" element={
+          <PermissionRoute user={user} token={token} moduleName="settings" action="read">
+            <Groupimage />
+          </PermissionRoute>
+        } />
+        <Route path="/session-settings" element={
+          <PermissionRoute user={user} token={token} moduleName="settings" action="read">
+            <Session />
+          </PermissionRoute>
         } />
 
         <Route path="/download/:fileId" element={<FileDownload />} />

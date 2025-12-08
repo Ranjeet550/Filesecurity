@@ -29,7 +29,7 @@ const FileSchema = new mongoose.Schema({
     required: [true, 'File type is required']
   },
   password: {
-    type: String,
+    type: mongoose.Schema.Types.Mixed,
     required: [true, 'Password is required for file security']
   },
   uploadedBy: {
@@ -102,6 +102,12 @@ const FileSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Group name cannot be more than 100 characters']
   },
+  remark: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: [500, 'Remark cannot be more than 500 characters']
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -138,6 +144,10 @@ FileSchema.statics.generatePassword = function() {
 
 // Check if the provided password matches the file password
 FileSchema.methods.verifyPassword = function(enteredPassword) {
+  // For ZIP files with multiple passwords, no single password verification
+  if (typeof this.password === 'object') {
+    return true; // ZIP files don't require password for download
+  }
   return enteredPassword === this.password;
 };
 

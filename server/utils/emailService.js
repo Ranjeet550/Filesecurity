@@ -28,7 +28,22 @@ const generateOTP = (length = 6) => {
 // Send OTP email
 const sendOTPEmail = async (email, otp) => {
   try {
+    // Validate email configuration
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error('Email configuration missing: EMAIL_USER or EMAIL_PASS not set');
+      throw new Error('Email service not configured properly');
+    }
+
     const transporter = createTransporter();
+    
+    // Verify transporter configuration
+    try {
+      await transporter.verify();
+      console.log('Email transporter verified successfully');
+    } catch (verifyError) {
+      console.error('Email transporter verification failed:', verifyError.message);
+      throw new Error('Email service connection failed. Please check your email credentials.');
+    }
     
     const mailOptions = {
       from: process.env.EMAIL_FROM || '"Secure File Transfer" <noreply@securefiletransfer.com>',
@@ -52,10 +67,12 @@ const sendOTPEmail = async (email, otp) => {
     };
     
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.messageId);
+    console.log('Email sent successfully:', info.messageId);
+    console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
     return true;
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error sending email:', error.message);
+    console.error('Error details:', error);
     throw error;
   }
 };

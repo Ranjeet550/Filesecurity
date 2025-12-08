@@ -39,6 +39,16 @@ const Dashboard = () => {
     // No storage limit - unlimited storage
   });
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Track files hidden by user (stored in localStorage)
+  const [hiddenFileIds, setHiddenFileIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`hiddenFiles_${user?._id}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Check if we should show all files view
   useEffect(() => {
@@ -59,23 +69,29 @@ const Dashboard = () => {
       // Set admin flag from API response
       setIsAdmin(response.isAdmin || false);
 
-      // Calculate stats
-      const totalFiles = response.data.length;
-      const totalDownloads = response.data.filter(file => {
+      // Filter out hidden files for stats calculation
+      const visibleFiles = response.data.filter(file => {
+        const fileId = file.id || file._id;
+        return !hiddenFileIds.includes(fileId);
+      });
+
+      // Calculate stats based on visible files only
+      const totalFiles = visibleFiles.length;
+      const totalDownloads = visibleFiles.filter(file => {
         const downloadCount = file.downloads && Array.isArray(file.downloads) ? file.downloads.length : 0;
         return downloadCount > 0;
       }).length;
-      const recentUploads = response.data.filter(
+      const recentUploads = visibleFiles.filter(
         file => new Date(file.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       ).length;
-      const storageUsed = response.data.reduce((acc, file) => acc + (file.size || 0), 0);
+      const storageUsed = visibleFiles.reduce((acc, file) => acc + (file.size || 0), 0);
 
-      // Calculate current user's download statistics
+      // Calculate current user's download statistics (based on visible files)
       const currentUserId = user?._id;
       let currentUserStats = null;
 
       if (currentUserId) {
-        const userFiles = response.data.filter(file =>
+        const userFiles = visibleFiles.filter(file =>
           (file.uploadedBy?._id || file.uploadedBy) === currentUserId
         );
 
@@ -127,7 +143,8 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchFiles();
-  }, []);
+    // eslint-disable-next-line
+  }, [hiddenFileIds]);
 
   // Format bytes to human readable format
   const formatBytes = (bytes, decimals = 2) => {
@@ -253,6 +270,8 @@ const Dashboard = () => {
           fetchFiles={fetchFiles}
           activeView={activeView}
           isAdmin={isAdmin}
+          hiddenFileIds={hiddenFileIds}
+          setHiddenFileIds={setHiddenFileIds}
         />
       </div>
     </Sidebar >

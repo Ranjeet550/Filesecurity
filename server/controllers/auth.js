@@ -93,6 +93,7 @@ exports.register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        group: user.group,
         profilePicture: user.profilePicture,
         bio: user.bio
       }
@@ -245,6 +246,7 @@ exports.login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        group: user.group,
         profilePicture: user.profilePicture,
         bio: user.bio
       }
@@ -285,6 +287,7 @@ exports.getMe = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        group: user.group,
         profilePicture: user.profilePicture,
         bio: user.bio,
         lastLogin: user.lastLogin,
@@ -326,6 +329,7 @@ exports.refreshToken = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        group: user.group,
         profilePicture: user.profilePicture,
         bio: user.bio
       }
@@ -377,6 +381,7 @@ exports.updateProfile = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        group: user.group,
         profilePicture: user.profilePicture,
         bio: user.bio,
         lastLogin: user.lastLogin,
@@ -518,7 +523,32 @@ exports.forgotPassword = async (req, res) => {
     });
 
     // Send OTP via email
-    await sendOTPEmail(email, otp);
+    try {
+      await sendOTPEmail(email, otp);
+    } catch (emailError) {
+      console.error('Email sending error:', emailError.message);
+      
+      // In development mode, log OTP to console as fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.log('='.repeat(50));
+        console.log('DEVELOPMENT MODE: Email sending failed');
+        console.log(`OTP for ${email}: ${otp}`);
+        console.log('='.repeat(50));
+        
+        // Don't delete OTP in development, allow user to use it
+        return res.status(200).json(encryptResponse({
+          success: true,
+          message: 'OTP generated (check server console in development mode)'
+        }));
+      }
+      
+      // Delete the OTP record if email fails in production
+      await OTP.deleteMany({ email });
+      return res.status(500).json(encryptResponse({
+        success: false,
+        message: 'Failed to send OTP email. Please check your email configuration or try again later.'
+      }));
+    }
 
     res.status(200).json(encryptResponse({
       success: true,
@@ -528,7 +558,7 @@ exports.forgotPassword = async (req, res) => {
     console.error('Forgot password error:', error);
     res.status(500).json(encryptResponse({
       success: false,
-      message: 'Failed to send OTP. Please try again.'
+      message: error.message || 'Failed to send OTP. Please try again.'
     }));
   }
 };

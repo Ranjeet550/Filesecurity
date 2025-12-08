@@ -7,6 +7,7 @@ const {
   deleteFile,
   getFilePassword,
   assignFileToUsers,
+  unassignFileFromUser,
   acceptFile,
   updateFileTiming
 } = require('../controllers/files');
@@ -50,6 +51,9 @@ router.delete('/:id', protect, checkPermission('file_management', 'delete'), del
 
 // Assign file to users (admin only)
 router.post('/:id/assign', protect, checkPermission('file_management', 'update'), assignFileToUsers);
+
+// Unassign file from user (admin only)
+router.delete('/:id/unassign/:userId', protect, checkPermission('file_management', 'update'), unassignFileFromUser);
 
 // Accept file (assigned user only)
 router.post('/:id/accept', protect, acceptFile);

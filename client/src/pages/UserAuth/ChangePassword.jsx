@@ -36,18 +36,12 @@ const ChangePassword = () => {
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('token');
-      
+      // axios defaults already include the Authorization header from AuthContext
       await axios.post(
         `${AUTH_API_URL}/change-password`, 
         { 
           currentPassword: values.currentPassword,
           newPassword: values.newPassword
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
       

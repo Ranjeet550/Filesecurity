@@ -10,7 +10,9 @@ import {
   SafetyOutlined,
   KeyOutlined,
   UserOutlined,
-  CodeOutlined
+  CodeOutlined,
+  FolderOpenOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
@@ -48,7 +50,7 @@ const Sidebar = ({ children }) => {
     const openKeys = [];
     
     // File Management submenu
-    if (pathname === '/upload' || (pathname === '/dashboard' && search.includes('view=all-files'))) {
+    if (pathname === '/upload' || pathname === '/file-upload' || pathname === '/folder-upload' || (pathname === '/dashboard' && search.includes('view=all-files'))) {
       openKeys.push('file-management');
     }
     
@@ -178,6 +180,16 @@ const Sidebar = ({ children }) => {
                       </Link>
                     )
                   }] : []),
+                  // Show Folder Upload only if user has create permission on file_management
+                  ...(hasPermission(user, 'file_management', 'create') ? [{
+                    key: '/folder-upload',
+                    icon: <FolderOpenOutlined style={{ fontSize: '14px', color: '#fa8c16' }} />,
+                    label: (
+                      <Link to="/folder-upload" className="sidebar-submenu-link">
+                        Bulk Upload
+                      </Link>
+                    )
+                  }] : []),
                   // Show All Files for admin and viewer roles
                   ...((isAdmin(user) || user?.role?.name === 'viewer') ? [{
                     key: '/all-files',
@@ -236,6 +248,17 @@ const Sidebar = ({ children }) => {
                   ]
                 },
               ] : []),
+
+              // Settings menu item (for users with settings read permission)
+              ...(hasPermission(user, 'settings', 'read') ? [{
+                key: '/settings',
+                icon: <SettingOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
+                label: (
+                  <Link to="/settings" className="sidebar-menu-link">
+                    Settings
+                  </Link>
+                )
+              }] : []),
             ]}
           />
         </div>

@@ -18,7 +18,8 @@ import {
   Badge,
   Statistic,
   DatePicker,
-  Select
+  Select,
+  Checkbox
 } from 'antd';
 import dayjs from 'dayjs';
 import {
@@ -36,11 +37,12 @@ import {
   SecurityScanOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
-  TeamOutlined
+  TeamOutlined,
+  FolderOpenOutlined
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
-import { uploadFile } from '../../api/fileService';
+import { uploadFile, assignFileToUsers } from '../../api/fileService';
 import { encryptFile } from '../../utils/fileEncryption';
 import AuthContext from '../../context/AuthContext';
 import { getUsers } from '../../api/userService';
@@ -60,6 +62,9 @@ const FileUpload = () => {
   const [useCustomPassword, setUseCustomPassword] = useState(false);
   const [customPassword, setCustomPassword] = useState('');
   const [availableGroups, setAvailableGroups] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [groupUsers, setGroupUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   // Additional file details for admin
   const [QPdetails, setQPdetails] = useState('');
@@ -67,9 +72,10 @@ const FileUpload = () => {
   const [subject, setSubject] = useState('');
   const [session, setSession] = useState('');
   const [semyear, setSemyear] = useState('');
-  const [group, setGroup] = useState(user?.group || '');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [group, setGroup] = useState('');
+  const [remark, setRemark] = useState('');
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
 
   // Function to generate a 10-character alphanumeric password with special characters
   const generatePassword = () => {
@@ -105,10 +111,24 @@ const FileUpload = () => {
     fetchAvailableGroups();
   }, []);
 
+  // Filter users when group changes
+  useEffect(() => {
+    if (group && allUsers.length > 0) {
+      const filteredUsers = allUsers.filter(user => user.group === group);
+      setGroupUsers(filteredUsers);
+      setSelectedUsers([]); // Reset selected users when group changes
+    } else {
+      setGroupUsers([]);
+      setSelectedUsers([]);
+    }
+  }, [group, allUsers]);
+
   const fetchAvailableGroups = async () => {
     try {
       const response = await getUsers();
       if (response.data) {
+        // Store all users
+        setAllUsers(response.data);
         // Get unique groups from users
         const uniqueGroups = [...new Set(response.data.map(user => user.group).filter(group => group))];
         setAvailableGroups(uniqueGroups);
@@ -125,9 +145,15 @@ const FileUpload = () => {
     }
 
     const currentPassword = useCustomPassword ? customPassword : generatedPassword;
-    
+
     if (!currentPassword || currentPassword.length < 8) {
       message.error('Please enter a password with at least 8 characters for file encryption');
+      return;
+    }
+
+    // Validate required timing fields
+    if (!startTime || !endTime) {
+      message.error('Please select both start time and end time for file availability');
       return;
     }
 
@@ -138,25 +164,27 @@ const FileUpload = () => {
       setError(null);
       setCurrentStep(1);
 
-      // Check if file is PDF or Excel - don't encrypt these as server will protect them
+      // Check if file is PDF, Excel, or ZIP - don't encrypt these as server will protect them
       const isPDF = file.type === 'application/pdf';
       const isxlsx = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
                       file.type === 'application/vnd.ms-excel';
+      const isZip = file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
 
-      let fileToUpload;
-      if (isPDF || isxlsx) {
-        // For PDF/Excel, upload original file - server will apply password protection
-        fileToUpload = file;
+      let fileWithPassword;
+
+      if (isPDF || isxlsx || isZip) {
+        // For PDF/Excel/ZIP, use original file directly - server will apply password protection
+        fileWithPassword = file;
+        console.log(`${isPDF ? 'PDF' : isxlsx ? 'Excel' : 'ZIP'} file - server will apply password protection`);
       } else {
         // For other files, encrypt on client side
-        fileToUpload = await encryptFile(file, currentPassword);
+        const encryptedBlob = await encryptFile(file, currentPassword);
+        fileWithPassword = new File([encryptedBlob], file.name, {
+          type: file.type,
+          lastModified: file.lastModified
+        });
+        console.log('File - client-side encryption applied');
       }
-
-      // Create a custom file object with password
-      const fileWithPassword = new File([fileToUpload], file.name, {
-        type: file.type,
-        lastModified: file.lastModified
-      });
 
       // Add password and additional details to the file object for the upload service
       fileWithPassword.password = currentPassword;
@@ -166,17 +194,32 @@ const FileUpload = () => {
       fileWithPassword.session = session;
       fileWithPassword.semyear = semyear;
       fileWithPassword.group = group;
-      fileWithPassword.startTime = startTime;
-      fileWithPassword.endTime = endTime;
+      fileWithPassword.remark = remark;
+      fileWithPassword.startTime = startTime ? startTime.toISOString() : null;
+      fileWithPassword.endTime = endTime ? endTime.toISOString() : null;
 
       const response = await uploadFile(fileWithPassword);
      
 
       if (response && response.data) {
-        setUploadedFile({...response.data, password: currentPassword});
+        // For ZIP files, password might be an object with multiple passwords
+        const passwordData = response.data.password || currentPassword;
+        setUploadedFile({...response.data, password: passwordData});
         setFileList([]);
         setCurrentStep(2);
-        message.success('File uploaded successfully');
+
+        // Assign file to selected users if any
+        if (selectedUsers.length > 0) {
+          try {
+            await assignFileToUsers(response.data.id, selectedUsers);
+            message.success(`File uploaded and assigned to ${selectedUsers.length} user(s) successfully`);
+          } catch (assignError) {
+            console.error('Error assigning file:', assignError);
+            message.warning('File uploaded but failed to assign to users');
+          }
+        } else {
+          message.success('File uploaded successfully');
+        }
       } else {
         throw new Error('Invalid response from server');
       }
@@ -206,8 +249,18 @@ const FileUpload = () => {
 
   const handleCopyPassword = () => {
     if (uploadedFile?.password) {
-      navigator.clipboard.writeText(uploadedFile.password);
-      message.success('Password copied to clipboard');
+      if (typeof uploadedFile.password === 'object') {
+        // For ZIP files, copy all passwords as formatted text
+        let passwordsText = 'File Passwords:\n\n';
+        Object.entries(uploadedFile.password).forEach(([filePath, password]) => {
+          passwordsText += `${filePath}: ${password}\n`;
+        });
+        navigator.clipboard.writeText(passwordsText);
+        message.success('All passwords copied to clipboard');
+      } else {
+        navigator.clipboard.writeText(uploadedFile.password);
+        message.success('Password copied to clipboard');
+      }
     }
   };
 
@@ -232,7 +285,8 @@ const FileUpload = () => {
         'application/vnd.ms-excel', // .xls
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
         'application/msword', // .doc
-        'application/zip' // .zip
+        'application/zip', // .zip
+        'application/x-zip-compressed' // Alternative ZIP MIME type
       ];
       const maxSize = 10 * 1024 * 1024; // 10 MB
 
@@ -286,15 +340,63 @@ const FileUpload = () => {
     <Sidebar>
       <div style={{ padding: '16px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Page Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <Title level={3} style={{ margin: '0 0 8px 0', fontSize: '20px' }}>
+              <CloudUploadOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+              File Upload
+            </Title>
+            <Text type="secondary" style={{ fontSize: '14px' }}>
+              Upload and secure your files with password protection
+            </Text>
+          </div>
+          <Link to="/folder-upload">
+            <Button
+              type="default"
+              icon={<FolderOpenOutlined />}
+              style={{
+                borderRadius: '6px',
+                height: '40px',
+                borderColor: '#52c41a',
+                color: '#52c41a',
+                fontWeight: '500'
+              }}
+            >
+              Bulk Upload
+            </Button>
+          </Link>
+        </div>
         
-          <Title level={3} style={{ margin: '0 0 8px 0', fontSize: '20px' }}>
-            <CloudUploadOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-            File Upload
-          </Title>
-          <Text type="secondary" style={{ fontSize: '14px' }}>
-            Upload and secure your files with password protection
-          </Text>
-        
+
+        {/* Bulk Upload Info Banner */}
+        {!uploadedFile && (
+          <Alert
+            message={
+              <span style={{ fontWeight: '500' }}>
+                <FolderOpenOutlined style={{ marginRight: '6px' }} />
+                Need to upload multiple files?
+              </span>
+            }
+            description={
+              <div>
+                <Text style={{ fontSize: '13px' }}>
+                  Use our <strong>Bulk Upload</strong> feature to upload entire folders with automatic password generation and Excel-based metadata mapping.
+                </Text>
+                <div style={{ marginTop: '8px' }}>
+                  <Link to="/folder-upload">
+                    <Button size="small" type="primary" icon={<FolderOpenOutlined />}>
+                      Go to Bulk Upload
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            }
+            type="info"
+            showIcon
+            closable
+            style={{ marginBottom: '16px', borderRadius: '6px' }}
+          />
+        )}
 
         {/* Error Alert */}
         {error && (
@@ -423,22 +525,60 @@ const FileUpload = () => {
                       </div>
 
                       <div>
-                        <Text strong style={{ display: 'block', marginBottom: '6px', fontSize: '13px' }}>Password:</Text>
-                        <Input.Password
-                          value={uploadedFile.password}
-                          readOnly
-                          size="small"
-                          style={{ width: '100%' }}
-                          addonAfter={
-                            <Tooltip title="Copy Password">
-                              <CopyOutlined
-                                onClick={handleCopyPassword}
-                                style={{ cursor: 'pointer', color: '#1890ff' }}
-                              />
-                            </Tooltip>
-                          }
-                          prefix={<LockOutlined style={{ color: '#ff4d4f' }} />}
-                        />
+                        {typeof uploadedFile.password === 'object' ? (
+                          <div>
+                            <Text strong style={{ display: 'block', marginBottom: '6px', fontSize: '13px' }}>File Passwords:</Text>
+                            <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #d9d9d9', borderRadius: '4px', padding: '8px' }}>
+                              {Object.entries(uploadedFile.password).map(([filePath, password]) => (
+                                <div key={filePath} style={{ marginBottom: '8px', padding: '4px', background: '#fafafa', borderRadius: '4px' }}>
+                                  <Text style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '2px' }}>
+                                    {filePath}
+                                  </Text>
+                                  <Input.Password
+                                    value={password}
+                                    readOnly
+                                    size="small"
+                                    style={{ width: '100%', fontSize: '12px' }}
+                                    addonAfter={
+                                      <Tooltip title="Copy Password">
+                                        <CopyOutlined
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(password);
+                                            message.success('Password copied to clipboard');
+                                          }}
+                                          style={{ cursor: 'pointer', color: '#1890ff', fontSize: '12px' }}
+                                        />
+                                      </Tooltip>
+                                    }
+                                    prefix={<LockOutlined style={{ color: '#ff4d4f', fontSize: '12px' }} />}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            <Text style={{ fontSize: '11px', color: '#8c8c8c', marginTop: '4px', display: 'block' }}>
+                              Passwords are also included in the ZIP file as 'passwords.txt'
+                            </Text>
+                          </div>
+                        ) : (
+                          <div>
+                            <Text strong style={{ display: 'block', marginBottom: '6px', fontSize: '13px' }}>Password:</Text>
+                            <Input.Password
+                              value={uploadedFile.password}
+                              readOnly
+                              size="small"
+                              style={{ width: '100%' }}
+                              addonAfter={
+                                <Tooltip title="Copy Password">
+                                  <CopyOutlined
+                                    onClick={handleCopyPassword}
+                                    style={{ cursor: 'pointer', color: '#1890ff' }}
+                                  />
+                                </Tooltip>
+                              }
+                              prefix={<LockOutlined style={{ color: '#ff4d4f' }} />}
+                            />
+                          </div>
+                        )}
                       </div>
 
                       <div style={{
@@ -493,6 +633,7 @@ const FileUpload = () => {
                     onClick={() => {
                       setUploadedFile(null);
                       setCurrentStep(0);
+                      setSelectedUsers([]);
                     }}
                     style={{
                       borderRadius: '6px',
@@ -540,8 +681,8 @@ const FileUpload = () => {
                 style={{ 
                   marginBottom: '16px', 
                   borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #fff7e6 0%, #f6ffed 100%)',
-                  border: '1px solid #ffe7ba'
+                  border: '1px solid lightgray'
+                 
                 }}
                 title={
                   <span style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
@@ -551,7 +692,7 @@ const FileUpload = () => {
                 }
               >
                 <Row gutter={[12, 12]} align="middle">
-                  <Col xs={24} sm={16}>
+                  <Col xs={24} sm={16} lg={9}>
                     {useCustomPassword ? (
                       <Input.Password
                         value={customPassword}
@@ -660,96 +801,7 @@ const FileUpload = () => {
                     </div>
                   )}
                 </div>
-               
-
-                {/* File Timing Section */}
-                <div style={{ marginTop: '16px' }}>
-                 
-
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12}>
-                      <div style={{ marginBottom: '8px' }}>
-                        <Text style={{
-                          fontSize: '13px',
-                          fontWeight: '600',
-                          color: '#262626',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}>
-                          🟢 Start Time
-                          <Text style={{ fontSize: '11px', color: '#8c8c8c', marginLeft: '4px' }}>(Optional)</Text>
-                        </Text>
-                        <DatePicker
-                          value={startTime ? dayjs(startTime) : null}
-                          onChange={(date) => setStartTime(date ? date.toISOString() : '')}
-                          showTime={{
-                            defaultValue: dayjs('00:00:00', 'HH:mm:ss'),
-                          }}
-                          format="YYYY-MM-DD HH:mm:ss"
-                          placeholder="Select when file becomes available"
-                          size="small"
-                          style={{
-                            marginTop: '6px',
-                            width: '100%',
-                            borderRadius: '4px',
-                            border: '1px solid #d9d9d9',
-                            fontSize: '12px'
-                          }}
-                        />
-                      </div>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <div style={{ marginBottom: '8px' }}>
-                        <Text style={{
-                          fontSize: '13px',
-                          fontWeight: '600',
-                          color: '#262626',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}>
-                          🔴 End Time
-                          <Text style={{ fontSize: '11px', color: '#8c8c8c', marginLeft: '4px' }}>(Optional)</Text>
-                        </Text>
-                        <DatePicker
-                          value={endTime ? dayjs(endTime) : null}
-                          onChange={(date) => setEndTime(date ? date.toISOString() : '')}
-                          showTime={{
-                            defaultValue: dayjs('23:59:59', 'HH:mm:ss'),
-                          }}
-                          format="YYYY-MM-DD HH:mm:ss"
-                          placeholder="Select when file expires"
-                          size="small"
-                          style={{
-                            marginTop: '6px',
-                            width: '100%',
-                            borderRadius: '4px',
-                            border: '1px solid #d9d9d9',
-                            fontSize: '12px'
-                          }}
-                        />
-                      </div>
-                    </Col>
-                  </Row>
-                  <div style={{
-                    background: 'linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)',
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    marginTop: '12px',
-                    border: '1px solid #b7eb8f',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                  }}>
-                    <Text style={{
-                      fontSize: '12px',
-                      color: '#389e0d',
-                      fontWeight: '500'
-                    }}>
-                      <InfoCircleOutlined style={{ marginRight: '6px', fontSize: '14px' }} />
-                      Set timing restrictions for file availability. Leave empty for unrestricted access.
-                    </Text>
-                  </div>
-                </div>
-                
-                {/* Password Strength Indicator */}
+                 {/* Password Strength Indicator */}
                 <div style={{ marginTop: '8px' }}>
                   <Text style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px', display: 'block' }}>
                     Password Strength:
@@ -793,42 +845,273 @@ const FileUpload = () => {
                     {(useCustomPassword ? customPassword : generatedPassword).length >= 8 ? 'Strong Password' : 'Password too short'}
                   </Text>
                 </div>
+               
 
-                {/* Group Selection - Only for Admins */}
+                {/* File Timing Section */}
+                <div style={{ marginTop: '16px' }}>
+                 
+
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} >
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{
+                          fontSize: '16px',
+                          fontWeight: '800',
+                          color: '#262626',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}>
+                          🟢 Start Time
+                          <Text style={{ fontSize: '15px', color: '#ff4d4f', marginLeft: '4px' }}>*</Text>
+                        </Text>
+                        <DatePicker
+                          value={startTime}
+                          onChange={(date) => {
+                            setStartTime(date);
+                            // Clear end time if it's before the new start time
+                            if (date && endTime && dayjs(endTime).isBefore(date)) {
+                              setEndTime(null);
+                              message.warning('End time cleared as it was before the new start time');
+                            }
+                          }}
+                          showTime={{
+                            defaultValue: dayjs('00:00:00', 'HH:mm:ss'),
+                          }}
+                          format="YYYY-MM-DD HH:mm:ss"
+                          placeholder="Select when file becomes available"
+                          size="small"
+                          disabledDate={(current) => {
+                            // Disable all dates before today
+                            return current && current.isBefore(dayjs().startOf('day'));
+                          }}
+                          disabledTime={(current) => {
+                            // If selected date is today, disable past hours/minutes
+                            if (current && current.isSame(dayjs(), 'day')) {
+                              const now = dayjs();
+                              return {
+                                disabledHours: () => {
+                                  const hours = [];
+                                  for (let i = 0; i < now.hour(); i++) {
+                                    hours.push(i);
+                                  }
+                                  return hours;
+                                },
+                                disabledMinutes: (selectedHour) => {
+                                  if (selectedHour === now.hour()) {
+                                    const minutes = [];
+                                    for (let i = 0; i < now.minute(); i++) {
+                                      minutes.push(i);
+                                    }
+                                    return minutes;
+                                  }
+                                  return [];
+                                },
+                                disabledSeconds: (selectedHour, selectedMinute) => {
+                                  if (selectedHour === now.hour() && selectedMinute === now.minute()) {
+                                    const seconds = [];
+                                    for (let i = 0; i < now.second(); i++) {
+                                      seconds.push(i);
+                                    }
+                                    return seconds;
+                                  }
+                                  return [];
+                                }
+                              };
+                            }
+                            return {};
+                          }}
+                          style={{
+                            marginTop: '6px',
+                            width: '70%',
+                            borderRadius: '4px',
+                            border: '1px solid #d9d9d9',
+                            fontSize: '12px'
+                          }}
+                        />
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{
+                          fontSize: '16px',
+                          fontWeight: '800',
+                          color: '#262626',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}>
+                          🔴 End Time
+                          <Text style={{ fontSize: '11px', color: '#ff4d4f', marginLeft: '4px' }}>*</Text>
+                        </Text>
+                        <DatePicker
+                          value={endTime}
+                          onChange={(date) => setEndTime(date)}
+                          showTime={{
+                            defaultValue: dayjs('23:59:59', 'HH:mm:ss'),
+                          }}
+                          format="YYYY-MM-DD HH:mm:ss"
+                          placeholder={startTime ? "Select when file expires" : "Select start time first"}
+                          size="small"
+                          disabled={!startTime}
+                          disabledDate={(current) => {
+                            // Disable dates before start time
+                            if (startTime && current) {
+                              return current.isBefore(dayjs(startTime).startOf('day'));
+                            }
+                            return false;
+                          }}
+                          disabledTime={(current) => {
+                            if (!current || !startTime) return {};
+
+                            const start = dayjs(startTime);
+
+                            // If selected date is same as start date, disable times before start time
+                            if (current.isSame(start, 'day')) {
+                              return {
+                                disabledHours: () => {
+                                  const hours = [];
+                                  for (let i = 0; i < start.hour(); i++) {
+                                    hours.push(i);
+                                  }
+                                  return hours;
+                                },
+                                disabledMinutes: (selectedHour) => {
+                                  if (selectedHour === start.hour()) {
+                                    const minutes = [];
+                                    for (let i = 0; i <= start.minute(); i++) {
+                                      minutes.push(i);
+                                    }
+                                    return minutes;
+                                  }
+                                  return [];
+                                },
+                                disabledSeconds: (selectedHour, selectedMinute) => {
+                                  if (selectedHour === start.hour() && selectedMinute === start.minute()) {
+                                    const seconds = [];
+                                    for (let i = 0; i <= start.second(); i++) {
+                                      seconds.push(i);
+                                    }
+                                    return seconds;
+                                  }
+                                  return [];
+                                }
+                              };
+                            }
+
+                            return {};
+                          }}
+                          style={{
+                            marginTop: '6px',
+                            width: '70%',
+                            borderRadius: '4px',
+                            border: '1px solid #d9d9d9',
+                            fontSize: '12px'
+                          }}
+                        />
+                      </div>
+                    </Col>
+                  </Row>
+                 
+                </div>
+                
+               
+
+                {/* Group and User Selection - Only for Admins */}
                 {user?.role?.name === 'admin' && (
                   <div style={{ marginTop: '16px' }}>
-                    <Text style={{
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#262626',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
-                      <TeamOutlined style={{ marginRight: '6px', color: '#1890ff', fontSize: '14px' }} />
-                      Group/University
-                    </Text>
-                    <Select
-                      value={group}
-                      onChange={(value) => setGroup(value)}
-                      placeholder="Select group/university"
-                      size="small"
-                      style={{ marginTop: '6px', width: '45%' }}
-                      showSearch
-                    >
-                      {availableGroups.map(groupName => (
-                        <Select.Option key={groupName} value={groupName}>
-                          {groupName}
-                        </Select.Option>
-                      ))}
-                    </Select>
-                    <div>
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} sm={12}>
+                        <div>
+                          <Text style={{
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            color: '#262626',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            <TeamOutlined style={{ marginRight: '6px', color: '#1890ff', fontSize: '14px' }} />
+                            Group*
+                          </Text>
+                          <Select
+                            value={group}
+                            onChange={(value) => setGroup(value)}
+                            placeholder="Select group/university"
+                            size="small"
+                            style={{ marginTop: '6px', width: '70%' }}
+                            showSearch
+                            allowClear
+                          >
+                            {availableGroups.map(groupName => (
+                              <Select.Option key={groupName} value={groupName}>
+                                {groupName}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <div>
+                          <Text style={{
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            color: '#262626',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            <TeamOutlined style={{ marginRight: '6px', color: '#1890ff', fontSize: '14px' }} />
+                            Assign to Users
+                          </Text>
+                          <Select
+                            mode="multiple"
+                            value={selectedUsers}
+                            onChange={(value) => setSelectedUsers(value)}
+                            placeholder="Select users to assign the file"
+                            size="small"
+                            style={{ marginTop: '6px', width: '70%' }}
+                            showSearch
+                            disabled={!group || groupUsers.length === 0}
+                            filterOption={(input, option) => {
+                              const user = groupUsers.find(u => u._id === option.value);
+                              return user && (
+                                user.name.toLowerCase().includes(input.toLowerCase()) ||
+                                user.email.toLowerCase().includes(input.toLowerCase())
+                              );
+                            }}
+                          >
+                            {groupUsers.map(user => (
+                              <Select.Option key={user._id} value={user._id}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  <div style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#52c41a',
+                                    marginRight: '8px'
+                                  }} />
+                                  <div>
+                                    <div style={{ fontWeight: '500', fontSize: '13px' }}>{user.name}</div>
+                                    <div style={{ fontSize: '11px', color: '#8c8c8c' }}>{user.email}</div>
+                                  </div>
+                                </div>
+                              </Select.Option>
+                            ))}
+                          </Select>
+                          {selectedUsers.length > 0 && (
+                            <div style={{ marginTop: '4px' }}>
+                              <Text style={{ fontSize: '11px', color: '#1890ff' }}>
+                                {selectedUsers.length} user(s) selected
+                              </Text>
+                            </div>
+                          )}
+                        </div>
+                      </Col>
+                    </Row>
+                    <div style={{ marginTop: '8px' }}>
                       <Text style={{
                         fontSize: '12px',
-                       
                         fontWeight: '500'
                       }}>
                         <InfoCircleOutlined style={{ marginRight: '6px', fontSize: '14px' }} />
-                        Select the university/group this file belongs to. Only users from this group will see this file.
+                        Select the university/group this file belongs to. Only users from this group will see this file. Then select users to assign the file to.
                       </Text>
                     </div>
                   </div>
@@ -842,8 +1125,9 @@ const FileUpload = () => {
                   style={{
                     marginBottom: '16px',
                     borderRadius: '6px',
-                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%)',
-                    border: '1px solid #91d5ff'
+                    border: '1px solid lightgray'
+                    
+                    
                   }}
                   title={
                     <span style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
@@ -855,11 +1139,11 @@ const FileUpload = () => {
                   <Row gutter={[16, 16]}>
                     <Col xs={24} sm={12} md={8}>
                       <div style={{ marginBottom: '8px' }}>
-                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>QP Details</Text>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Catch NO</Text>
                         <Input
                           value={QPdetails}
                           onChange={(e) => setQPdetails(e.target.value)}
-                          placeholder="Enter QP details"
+                          placeholder="Enter catch no."
                           size="small"
                           style={{ marginTop: '4px' }}
                         />
@@ -867,11 +1151,11 @@ const FileUpload = () => {
                     </Col>
                     <Col xs={24} sm={12} md={8}>
                       <div style={{ marginBottom: '8px' }}>
-                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Subcourse</Text>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Course</Text>
                         <Input
                           value={Subcourse}
                           onChange={(e) => setSubcourse(e.target.value)}
-                          placeholder="Enter subcourse"
+                          placeholder="Enter course"
                           size="small"
                           style={{ marginTop: '4px' }}
                         />
@@ -940,6 +1224,18 @@ const FileUpload = () => {
                           value={semyear}
                           onChange={(e) => setSemyear(e.target.value)}
                           placeholder="Enter semester/year"
+                          size="small"
+                          style={{ marginTop: '4px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ fontSize: '13px', fontWeight: '500', color: '#262626' }}>Remark</Text>
+                        <Input
+                          value={remark}
+                          onChange={(e) => setRemark(e.target.value)}
+                          placeholder="Enter remark"
                           size="small"
                           style={{ marginTop: '4px' }}
                         />

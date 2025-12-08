@@ -109,30 +109,17 @@ const Login = () => {
             justifyContent: 'center',
             marginBottom: '4px'
           }}>
-            <SecurityScanOutlined style={{
-              fontSize: '28px',
-              color: '#00BF96',
-              marginRight: '8px',
-              filter: 'drop-shadow(0 4px 6px rgba(0, 191, 150, 0.3))'
-            }} />
+            
             <SafetyOutlined style={{
-              fontSize: '20px',
+              fontSize: '40px',
               color: '#00A080',
               position: 'relative',
               top: '2px',
               filter: 'drop-shadow(0 4px 6px rgba(0, 160, 128, 0.3))'
             }} />
           </div>
-          <div style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            background: 'linear-gradient(135deg, #00BF96 0%, #00A080 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-          }}>
-            Secure File Transfer
-          </div>
+          
+          
         </div>
 
         <Title level={5} style={{

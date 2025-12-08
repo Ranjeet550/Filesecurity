@@ -16,6 +16,7 @@ const activityRoutes = require('./routes/activities');
 const moduleRoutes = require('./routes/modules');
 const permissionRoutes = require('./routes/permissions');
 const roleRoutes = require('./routes/roles');
+const settingsRoutes = require('./routes/settings');
 
 // Import middleware
 const { activityLogger, logActivity } = require('./middleware/logger');
@@ -55,12 +56,13 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/modules', moduleRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/roles', roleRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Server port
 const PORT = process.env.PORT || 5000;
 
 // MongoDB connection
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/secure-file-transfer';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://Ranjeet:SoGEUgDZSFEIZmrC@cluster0.txsr4.mongodb.net/safefile';
 mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));

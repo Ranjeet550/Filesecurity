@@ -32,6 +32,13 @@ const initializeRolePermissions = async () => {
         route: '/users'
       },
       {
+        name: 'settings',
+        displayName: 'Settings',
+        description: 'System configuration and settings',
+        icon: 'SettingOutlined',
+        route: '/settings'
+      },
+      {
         name: 'system_management',
         displayName: 'System Management',
         description: 'System activities and logs',
@@ -96,8 +103,9 @@ const initializeRolePermissions = async () => {
           createdPermissions.dashboard.read._id,
           createdPermissions.file_management.create._id,
           createdPermissions.file_management.read._id,
-          createdPermissions.file_management.update._id
-          // Note: delete permission removed for regular users
+          createdPermissions.file_management.update._id,
+          createdPermissions.settings.read._id
+          // Note: delete permission removed for regular users, settings update removed
         ]
       },
       {

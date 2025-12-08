@@ -181,12 +181,7 @@ const OTPVerification = () => {
             justifyContent: 'center',
             marginBottom: '4px'
           }}>
-            <SecurityScanOutlined style={{
-              fontSize: '28px',
-              color: '#00BF96',
-              marginRight: '8px',
-              filter: 'drop-shadow(0 4px 6px rgba(0, 191, 150, 0.3))'
-            }} />
+            
             <SafetyOutlined style={{
               fontSize: '20px',
               color: '#00A080',
