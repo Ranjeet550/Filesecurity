@@ -88,11 +88,27 @@ const initializeRolePermissions = async () => {
     // Define roles
     const roles = [
       {
-        name: 'admin',
-        displayName: 'Administrator',
-        description: 'Full system access',
+        name: 'superadmin',
+        displayName: 'Super Administrator',
+        description: 'Full access to all modules and features',
         isSystem: true,
         permissions: Object.values(createdPermissions).flatMap(modulePerms => Object.values(modulePerms)).map(p => p._id)
+      },
+      {
+        name: 'admin',
+        displayName: 'Administrator',
+        description: 'Dashboard and File Management access only',
+        isSystem: true,
+        permissions: [
+          createdPermissions.dashboard.create._id,
+          createdPermissions.dashboard.read._id,
+          createdPermissions.dashboard.update._id,
+          createdPermissions.dashboard.delete._id,
+          createdPermissions.file_management.create._id,
+          createdPermissions.file_management.read._id,
+          createdPermissions.file_management.update._id,
+          createdPermissions.file_management.delete._id
+        ]
       },
       {
         name: 'user',
@@ -151,7 +167,9 @@ const initializeRolePermissions = async () => {
 
     for (const user of usersWithStringRoles) {
       let newRoleId;
-      if (user.role === 'admin' || (typeof user.role === 'string' && user.role.includes('admin'))) {
+      if (user.role === 'superadmin' || (typeof user.role === 'string' && user.role.includes('superadmin'))) {
+        newRoleId = createdRoles.superadmin._id;
+      } else if (user.role === 'admin' || (typeof user.role === 'string' && user.role.includes('admin'))) {
         newRoleId = createdRoles.admin._id;
       } else {
         newRoleId = createdRoles.user._id;

@@ -15,8 +15,8 @@ export const hasPermission = (user, moduleName, action) => {
     return false;
   }
 
-  // Admin users have all permissions
-  if (user.role.name === 'admin') {
+  // Superadmin and admin users have all permissions
+  if (user.role.name === 'superadmin' || user.role.name === 'admin') {
     return true;
   }
 
@@ -45,12 +45,12 @@ export const hasAnyPermission = (user, permissions) => {
 };
 
 /**
- * Check if user is admin
+ * Check if user is admin or superadmin
  * @param {Object} user - User object with role
- * @returns {boolean} - True if user is admin
+ * @returns {boolean} - True if user is admin or superadmin
  */
 export const isAdmin = (user) => {
-  return user?.role?.name === 'admin';
+  return user?.role?.name === 'admin' || user?.role?.name === 'superadmin';
 };
 
 /**

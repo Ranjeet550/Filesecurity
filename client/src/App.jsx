@@ -187,7 +187,7 @@ const PrivateRoute = ({ children, user, token }) => {
 
 // Admin route component
 const AdminRoute = ({ children, user, token }) => {
-  if (!token || !user || (user.role?.name !== 'admin' && user.role !== 'admin')) {
+  if (!token || !user || (user.role?.name !== 'admin' && user.role?.name !== 'superadmin' && user.role !== 'admin' && user.role !== 'superadmin')) {
     return <Navigate to="/dashboard" replace />;
   }
 

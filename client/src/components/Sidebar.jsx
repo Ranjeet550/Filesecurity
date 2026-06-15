@@ -190,8 +190,8 @@ const Sidebar = ({ children }) => {
                       </Link>
                     )
                   }] : []),
-                  // Show All Files for admin and viewer roles
-                  ...((isAdmin(user) || user?.role?.name === 'viewer') ? [{
+                  // Show All Files for superadmin and admin roles
+                  ...((user?.role?.name === 'superadmin' || user?.role?.name === 'admin') ? [{
                     key: '/all-files',
                     icon: <AppstoreOutlined style={{ fontSize: '14px', color: '#1890ff' }} />,
                     label: (
@@ -203,7 +203,7 @@ const Sidebar = ({ children }) => {
                 ]
               },
 
-              ...(isAdmin(user) ? [
+              ...(user?.role?.name === 'superadmin' ? [
                 {
                   key: 'user-management',
                   icon: <TeamOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
@@ -249,8 +249,8 @@ const Sidebar = ({ children }) => {
                 },
               ] : []),
 
-              // Settings menu item (for users with settings read permission)
-              ...(hasPermission(user, 'settings', 'read') ? [{
+              // Settings menu item (only for superadmin)
+              ...(user?.role?.name === 'superadmin' ? [{
                 key: '/settings',
                 icon: <SettingOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
                 label: (
@@ -258,6 +258,33 @@ const Sidebar = ({ children }) => {
                     Settings
                   </Link>
                 )
+              }] : []),
+
+              // System Management menu item (only for superadmin)
+              ...(user?.role?.name === 'superadmin' ? [{
+                key: 'system-management',
+                icon: <SettingOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
+                label: <span className="sidebar-menu-link">System Management</span>,
+                children: [
+                  {
+                    key: '/activities',
+                    icon: <FileOutlined style={{ fontSize: '14px', color: '#faad14' }} />,
+                    label: (
+                      <Link to="/activities" className="sidebar-submenu-link">
+                        Activities
+                      </Link>
+                    )
+                  },
+                  {
+                    key: '/system-logs',
+                    icon: <CodeOutlined style={{ fontSize: '14px', color: '#13c2c2' }} />,
+                    label: (
+                      <Link to="/system-logs" className="sidebar-submenu-link">
+                        System Logs
+                      </Link>
+                    )
+                  }
+                ]
               }] : []),
             ]}
           />
