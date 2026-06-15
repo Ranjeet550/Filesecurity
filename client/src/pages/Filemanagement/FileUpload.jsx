@@ -1016,7 +1016,7 @@ const FileUpload = () => {
                
 
                 {/* Group and User Selection - Only for Admins */}
-                {user?.role?.name === 'admin' && (
+                {(user?.role?.name === 'admin' || user?.role?.name === 'superadmin') && (
                   <div style={{ marginTop: '16px' }}>
                     <Row gutter={[16, 16]}>
                       <Col xs={24} sm={12}>
@@ -1119,7 +1119,7 @@ const FileUpload = () => {
               </Card>
 
               {/* Additional File Details Section (Admin Only) */}
-              {user?.role?.name === 'admin' && (
+              {(user?.role?.name === 'admin' || user?.role?.name === 'superadmin') && (
                 <Card
                   size="small"
                   style={{

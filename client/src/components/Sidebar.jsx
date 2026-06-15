@@ -203,12 +203,13 @@ const Sidebar = ({ children }) => {
                 ]
               },
 
-              ...(user?.role?.name === 'superadmin' ? [
+              ...(user?.role?.name === 'superadmin' || user?.role?.name === 'admin' ? [
                 {
                   key: 'user-management',
                   icon: <TeamOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
                   label: <span className="sidebar-menu-link">User Management</span>,
                   children: [
+                    // Users submenu - visible for both admin and superadmin
                     {
                       key: '/users',
                       icon: <UserOutlined style={{ fontSize: '14px', color: '#722ed1' }} />,
@@ -218,39 +219,42 @@ const Sidebar = ({ children }) => {
                         </Link>
                       )
                     },
-                    {
-                      key: '/roles',
-                      icon: <SafetyOutlined style={{ fontSize: '14px', color: '#fa8c16' }} />,
-                      label: (
-                        <Link to="/roles" className="sidebar-submenu-link">
-                          Roles
-                        </Link>
-                      )
-                    },
-                    {
-                      key: '/permissions',
-                      icon: <KeyOutlined style={{ fontSize: '14px', color: '#eb2f96' }} />,
-                      label: (
-                        <Link to="/permissions" className="sidebar-submenu-link">
-                          Permissions
-                        </Link>
-                      )
-                    },
-                    {
-                      key: '/modules',
-                      icon: <CodeOutlined style={{ fontSize: '14px', color: '#13c2c2' }} />,
-                      label: (
-                        <Link to="/modules" className="sidebar-submenu-link">
-                          Modules
-                        </Link>
-                      )
-                    }
+                    // Roles, Permissions, and Modules - only visible for superadmin
+                    ...(user?.role?.name === 'superadmin' ? [
+                      {
+                        key: '/roles',
+                        icon: <SafetyOutlined style={{ fontSize: '14px', color: '#fa8c16' }} />,
+                        label: (
+                          <Link to="/roles" className="sidebar-submenu-link">
+                            Roles
+                          </Link>
+                        )
+                      },
+                      {
+                        key: '/permissions',
+                        icon: <KeyOutlined style={{ fontSize: '14px', color: '#eb2f96' }} />,
+                        label: (
+                          <Link to="/permissions" className="sidebar-submenu-link">
+                            Permissions
+                          </Link>
+                        )
+                      },
+                      {
+                        key: '/modules',
+                        icon: <CodeOutlined style={{ fontSize: '14px', color: '#13c2c2' }} />,
+                        label: (
+                          <Link to="/modules" className="sidebar-submenu-link">
+                            Modules
+                          </Link>
+                        )
+                      }
+                    ] : [])
                   ]
                 },
               ] : []),
 
-              // Settings menu item (only for superadmin)
-              ...(user?.role?.name === 'superadmin' ? [{
+              // Settings menu item (for superadmin and admin)
+              ...(user?.role?.name === 'superadmin' || user?.role?.name === 'admin' ? [{
                 key: '/settings',
                 icon: <SettingOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
                 label: (

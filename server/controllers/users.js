@@ -7,7 +7,19 @@ const { encryptResponse } = require('../utils/responseEncryption');
 // @access  Private/Admin
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find()
+    // Build query based on user role
+    let query = User.find();
+
+    // If the requesting user is an admin (not superadmin), exclude superadmin users
+    if (req.user.role.name === 'admin') {
+      // Get the superadmin role to exclude users with that role
+      const superadminRole = await Role.findOne({ name: 'superadmin' });
+      if (superadminRole) {
+        query = query.where('role').ne(superadminRole._id);
+      }
+    }
+
+    const users = await query
       .select('-password')
       .populate('role', 'name displayName')
       .sort({ createdAt: -1 });
@@ -39,6 +51,14 @@ exports.getUser = async (req, res) => {
       return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
+      }));
+    }
+
+    // If the requesting user is an admin (not superadmin), prevent access to superadmin users
+    if (req.user.role.name === 'admin' && user.role.name === 'superadmin') {
+      return res.status(403).json(encryptResponse({
+        success: false,
+        message: 'Access denied. Cannot access superadmin user details.'
       }));
     }
 
@@ -141,6 +161,14 @@ exports.updateUser = async (req, res) => {
       }));
     }
 
+    // If the requesting user is an admin (not superadmin), prevent updating superadmin users
+    if (req.user.role.name === 'admin' && user.role.name === 'superadmin') {
+      return res.status(403).json(encryptResponse({
+        success: false,
+        message: 'Access denied. Cannot update superadmin users.'
+      }));
+    }
+
     // Check if email is being changed and if it already exists
     if (email && email !== user.email) {
       const existingUser = await User.findOne({ email });
@@ -194,6 +222,14 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json(encryptResponse({
         success: false,
         message: 'User not found'
+      }));
+    }
+
+    // If the requesting user is an admin (not superadmin), prevent deleting superadmin users
+    if (req.user.role.name === 'admin' && user.role.name === 'superadmin') {
+      return res.status(403).json(encryptResponse({
+        success: false,
+        message: 'Access denied. Cannot delete superadmin users.'
       }));
     }
 

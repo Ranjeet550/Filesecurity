@@ -29,7 +29,9 @@ import {
   UserAddOutlined,
   ClockCircleOutlined,
   EnvironmentOutlined,
-  SafetyOutlined
+  SafetyOutlined,
+  SearchOutlined,
+  ClearOutlined
 } from '@ant-design/icons';
 import Sidebar from '../../components/Sidebar';
 import { getUsers, createUser, updateUser, deleteUser } from '../../api/userService';
@@ -41,6 +43,7 @@ const { Option } = Select;
 const UserManagement = () => {
   const { message } = App.useApp();
   const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -49,6 +52,9 @@ const UserManagement = () => {
   const [form] = Form.useForm();
   const [isMobile, setIsMobile] = useState(false);
   const [availableGroups, setAvailableGroups] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [filterRole, setFilterRole] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -101,6 +107,42 @@ const UserManagement = () => {
     fetchUsers();
     fetchRoles();
   }, []);
+
+  // Filter and search users
+  useEffect(() => {
+    let filtered = [...users];
+
+    // Search filter (by name or email)
+    if (searchText) {
+      filtered = filtered.filter(user =>
+        user.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
+
+    // Role filter
+    if (filterRole) {
+      filtered = filtered.filter(user =>
+        user.role?._id === filterRole || user.role === filterRole
+      );
+    }
+
+    // Group filter
+    if (filterGroup) {
+      filtered = filtered.filter(user => user.group === filterGroup);
+    }
+
+    setFilteredUsers(filtered);
+    // Reset to first page when filters change
+    setPagination(prev => ({ ...prev, current: 1 }));
+  }, [users, searchText, filterRole, filterGroup]);
+
+  const handleClearFilters = () => {
+    setSearchText('');
+    setFilterRole('');
+    setFilterGroup('');
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
 
   const showCreateModal = () => {
     setModalType('create');
@@ -352,7 +394,11 @@ const UserManagement = () => {
               {isMobile && 'Edit'}
             </Button>
           </Tooltip>
-          <Tooltip title={record.role?.name === 'admin' ? 'Cannot delete admin user' : 'Delete User'}>
+          <Tooltip title={
+            record.role?.name === 'admin' ? 'Cannot delete admin user' :
+            record.role?.name === 'superadmin' ? 'Cannot delete superadmin user' :
+            'Delete User'
+          }>
             <Popconfirm
               title="Delete this user?"
               description="This action cannot be undone."
@@ -360,14 +406,14 @@ const UserManagement = () => {
               okText="Yes"
               cancelText="No"
               okButtonProps={{ danger: true }}
-              disabled={record.role?.name === 'admin'}
+              disabled={record.role?.name === 'admin' || record.role?.name === 'superadmin'}
             >
               <Button
                 danger
                 icon={<DeleteOutlined />}
                 shape={isMobile ? 'default' : 'circle'}
                 size={isMobile ? 'small' : 'middle'}
-                disabled={record.role?.name === 'admin'}
+                disabled={record.role?.name === 'admin' || record.role?.name === 'superadmin'}
               >
                 {isMobile && 'Delete'}
               </Button>
@@ -469,10 +515,101 @@ const UserManagement = () => {
           }
           style={{ margin: isMobile ? '0 16px' : '0 24px' }}
         >
+          {/* Search and Filter Section */}
+          <div style={{
+            marginBottom: '20px',
+            padding: '16px',
+            backgroundColor: '#fafafa',
+            borderRadius: '8px',
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: '12px',
+            alignItems: isMobile ? 'stretch' : 'center',
+            flexWrap: 'wrap'
+          }}>
+            {/* Search Input */}
+            <Input
+              placeholder="Search by name or email..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{
+                flex: isMobile ? 1 : '1 1 250px',
+                borderRadius: '6px'
+              }}
+              size={isMobile ? 'middle' : 'large'}
+            />
+
+            {/* Role Filter */}
+            <Select
+              placeholder="Filter by Role"
+              value={filterRole}
+              onChange={setFilterRole}
+              allowClear
+              style={{
+                flex: isMobile ? 1 : '1 1 180px',
+                borderRadius: '6px'
+              }}
+              size={isMobile ? 'middle' : 'large'}
+            >
+              <Select.Option value="">All Roles</Select.Option>
+              {roles.map(role => (
+                <Select.Option key={role._id} value={role._id}>
+                  <Space size="small">
+                    {role.name === 'admin' || role.name === 'superadmin' ? (
+                      <SafetyOutlined />
+                    ) : (
+                      <UserOutlined />
+                    )}
+                    {role.displayName}
+                  </Space>
+                </Select.Option>
+              ))}
+            </Select>
+
+            {/* Group Filter */}
+            <Select
+              placeholder="Filter by Group"
+              value={filterGroup}
+              onChange={setFilterGroup}
+              allowClear
+              style={{
+                flex: isMobile ? 1 : '1 1 180px',
+                borderRadius: '6px'
+              }}
+              size={isMobile ? 'middle' : 'large'}
+            >
+              <Select.Option value="">All Groups</Select.Option>
+              {availableGroups.map(group => (
+                <Select.Option key={group} value={group}>
+                  {group}
+                </Select.Option>
+              ))}
+            </Select>
+
+            {/* Clear Filters Button */}
+            {(searchText || filterRole || filterGroup) && (
+              <Button
+                type="default"
+                icon={<ClearOutlined />}
+                onClick={handleClearFilters}
+                style={{ borderRadius: '6px' }}
+                size={isMobile ? 'middle' : 'large'}
+              >
+                {isMobile ? 'Clear' : 'Clear Filters'}
+              </Button>
+            )}
+          </div>
+
+          {/* Results Counter */}
+          <div style={{ marginBottom: '12px', color: '#8c8c8c', fontSize: '14px' }}>
+            Showing {filteredUsers.length} of {users.length} users
+          </div>
+
           <Table
             className="custom-table"
             columns={columns}
-            dataSource={users}
+            dataSource={filteredUsers}
             rowKey="_id"
             loading={loading}
             scroll={{ x: isMobile ? 600 : undefined }}

@@ -1293,7 +1293,7 @@ const FolderUpload = () => {
               </Card>
 
               {/* Group and User Selection */}
-              {user?.role?.name === 'admin' && (
+              {(user?.role?.name === 'admin' || user?.role?.name === 'superadmin') && (
                 <Card
                   size="small"
                   style={{
