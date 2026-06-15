@@ -17,6 +17,8 @@ import UserManagement from './pages/Usermanagement/Alluser';
 import RoleManagement from './pages/Usermanagement/RoleManagement';
 import PermissionManagement from './pages/Usermanagement/PermissionManagement';
 import ModuleManagement from './pages/Usermanagement/ModuleManagement';
+import SystemLogs from './pages/Usermanagement/SystemLogs';
+import ActivitiesLog from './pages/Usermanagement/ActivitiesLog';
 import NotFound from './components/NotFound';
 import ForgotPassword from './pages/UserAuth/ForgotPassword';
 import OTPVerification from './pages/UserAuth/OTPVerification';
@@ -169,6 +171,16 @@ function AppRoutes() {
             <ModuleManagement />
           </AdminRoute>
         } />
+        <Route path="/system-logs" element={
+          <SuperAdminRoute user={user} token={token}>
+            <SystemLogs />
+          </SuperAdminRoute>
+        } />
+        <Route path="/activities" element={
+          <SuperAdminRoute user={user} token={token}>
+            <ActivitiesLog />
+          </SuperAdminRoute>
+        } />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -194,6 +206,19 @@ const AdminRoute = ({ children, user, token }) => {
   return children;
 };
 
+// SuperAdmin route component (only for superadmin)
+const SuperAdminRoute = ({ children, user, token }) => {
+  const isSuperAdmin = user?.role?.name === 'superadmin' || 
+                       user?.role === 'superadmin' ||
+                       (typeof user?.role === 'object' && user?.role?.name === 'superadmin');
+  
+  if (!token || !user || !isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
 // Permission-based route component
 const PermissionRoute = ({ children, user, token, moduleName, action }) => {
   if (!token || !user) {
@@ -207,7 +232,7 @@ const PermissionRoute = ({ children, user, token, moduleName, action }) => {
       )
     : false;
 
-  if (user?.role?.name === 'admin' || user?.role === 'admin') {
+  if (user?.role?.name === 'admin' || user?.role === 'superadmin') {
     return children;
   }
 

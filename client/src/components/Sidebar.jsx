@@ -59,6 +59,11 @@ const Sidebar = ({ children }) => {
       openKeys.push('user-management');
     }
     
+    // System Management submenu (superadmin only)
+    if (pathname === '/activities' || pathname === '/system-logs') {
+      openKeys.push('system-management');
+    }
+    
     return openKeys;
   };
 
@@ -265,7 +270,7 @@ const Sidebar = ({ children }) => {
               }] : []),
 
               // System Management menu item (only for superadmin)
-              ...(user?.role?.name === 'superadmin' ? [{
+              ...(user?.role?.name === 'superadmin' || user?.role === 'superadmin' ? [{
                 key: 'system-management',
                 icon: <SettingOutlined style={{ fontSize: '16px', color: '#00BF96' }} />,
                 label: <span className="sidebar-menu-link">System Management</span>,
