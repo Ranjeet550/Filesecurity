@@ -646,7 +646,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin, hiddenFil
       if (error.message && error.message.includes('already downloaded')) {
         setDownloadError('You have already downloaded this file. Each user can only download once.');
       } else {
-        setDownloadError('Invalid password or file not available');
+        setDownloadError('file download time are not started yet  ');
       }
       setDownloadProgress(0);
     } finally {
@@ -748,6 +748,51 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin, hiddenFil
       render: (text) => text || '-',
       ellipsis: true,
       width: '120px',
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: () => (
+        <SortableHeader
+          columnKey="originalName"
+          label="File Name"
+          onSort={requestSort}
+          getSortIcon={getSortIcon}
+          setSearchTerm={setColumnSearchTerm}
+          getSearchTerm={getColumnSearchTerm}
+        />
+      ),
+      dataIndex: 'originalName',
+      key: 'originalName',
+      render: (text, record) => (
+        <Space>
+          {getFileIcon(record.mimetype)}
+          <span style={{ fontWeight: '500' }}>{text}</span>
+        </Space>
+      ),
+      ellipsis: true,
+      onHeaderCell: () => ({ style: tableStyles.headerCell }),
+      onCell: () => ({ style: tableStyles.bodyCell }),
+    },
+    {
+      title: () => (
+        <SortableHeader
+          columnKey="status"
+          label="Status"
+          onSort={requestSort}
+          getSortIcon={getSortIcon}
+          setSearchTerm={setColumnSearchTerm}
+          getSearchTerm={getColumnSearchTerm}
+        />
+      ),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => (
+        <Tag color={status === 'Accepted' ? 'green' : 'orange'} style={{ fontWeight: 500 }}>
+          {status || 'Pending'}
+        </Tag>
+      ),
+      width: '110px',
       onHeaderCell: () => ({ style: tableStyles.headerCell }),
       onCell: () => ({ style: tableStyles.bodyCell }),
     },
@@ -932,29 +977,6 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin, hiddenFil
     {
       title: () => (
         <SortableHeader
-          columnKey="originalName"
-          label="File Name"
-          onSort={requestSort}
-          getSortIcon={getSortIcon}
-          setSearchTerm={setColumnSearchTerm}
-          getSearchTerm={getColumnSearchTerm}
-        />
-      ),
-      dataIndex: 'originalName',
-      key: 'originalName',
-      render: (text, record) => (
-        <Space>
-          {getFileIcon(record.mimetype)}
-          <span style={{ fontWeight: '500' }}>{text}</span>
-        </Space>
-      ),
-      ellipsis: true,
-      onHeaderCell: () => ({ style: tableStyles.headerCell }),
-      onCell: () => ({ style: tableStyles.bodyCell }),
-    },
-    {
-      title: () => (
-        <SortableHeader
           columnKey="size"
           label="Size"
           onSort={requestSort}
@@ -1121,28 +1143,6 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin, hiddenFil
         onCell: () => ({ style: tableStyles.bodyCell }),
       },
     ] : []),
-    {
-      title: () => (
-        <SortableHeader
-          columnKey="status"
-          label="Status"
-          onSort={requestSort}
-          getSortIcon={getSortIcon}
-          setSearchTerm={setColumnSearchTerm}
-          getSearchTerm={getColumnSearchTerm}
-        />
-      ),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => (
-        <Tag color={status === 'Accepted' ? 'green' : 'orange'} style={{ fontWeight: 500 }}>
-          {status || 'Pending'}
-        </Tag>
-      ),
-      width: '110px',
-      onHeaderCell: () => ({ style: tableStyles.headerCell }),
-      onCell: () => ({ style: tableStyles.bodyCell }),
-    },
     {
       title: 'Actions',
       key: 'actions',
