@@ -38,7 +38,9 @@ import {
   InfoCircleOutlined,
   ReloadOutlined,
   TeamOutlined,
-  FolderOpenOutlined
+  FolderOpenOutlined,
+  ClockCircleOutlined,
+  StopOutlined
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
@@ -861,7 +863,8 @@ const FileUpload = () => {
                           display: 'flex',
                           alignItems: 'center'
                         }}>
-                          🟢 Start Time
+                          <ClockCircleOutlined style={{ marginRight: '6px', color: '#52c41a', fontSize: '16px' }} />
+                          Start Time
                           <Text style={{ fontSize: '15px', color: '#ff4d4f', marginLeft: '4px' }}>*</Text>
                         </Text>
                         <DatePicker
@@ -939,7 +942,8 @@ const FileUpload = () => {
                           display: 'flex',
                           alignItems: 'center'
                         }}>
-                          🔴 End Time
+                          <StopOutlined style={{ marginRight: '6px', color: '#ff4d4f', fontSize: '16px' }} />
+                          End Time
                           <Text style={{ fontSize: '11px', color: '#ff4d4f', marginLeft: '4px' }}>*</Text>
                         </Text>
                         <DatePicker
