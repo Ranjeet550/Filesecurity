@@ -1471,7 +1471,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin, hiddenFil
             <Col xs={24} sm={12} md={12} lg={8} xl={6} style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 
-                icon={<FileExcelOutlined style={{ fontSize: '40px' }} />}
+                icon={<FileExcelOutlined style={{ fontSize: '40px', color: '#217346' }} />}
                 onClick={() => {
                   exportFilesToExcel(filteredFiles, {
                     filename: 'files_report.xlsx',
