@@ -10,6 +10,7 @@ import {
   Form,
   Input,
   Select,
+  AutoComplete,
   Avatar,
   Tag,
   Tooltip,
@@ -744,9 +745,16 @@ const UserManagement = () => {
             label="Group/University"
             rules={[{ required: true, message: 'Please enter group/university name' }]}
           >
-            <Input
-              prefix={<TeamOutlined style={{ color: '#00BF96' }} />}
-              placeholder="Enter group or university name"
+            <AutoComplete
+              placeholder="Select or type group/university name"
+              allowClear
+              options={availableGroups.map(group => ({
+                label: group,
+                value: group
+              }))}
+              filterOption={(inputValue, option) =>
+                option.label.toLowerCase().includes(inputValue.toLowerCase())
+              }
             />
           </Form.Item>
         </Form>
