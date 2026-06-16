@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   Typography,
   Table,
@@ -37,12 +37,14 @@ import {
 import Sidebar from '../../components/Sidebar';
 import { getUsers, createUser, updateUser, deleteUser } from '../../api/userService';
 import { getRoles } from '../../api/roleService';
+import AuthContext from '../../context/AuthContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 const UserManagement = () => {
   const { message } = App.useApp();
+  const { user: currentUser } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -143,6 +145,24 @@ const UserManagement = () => {
     setFilterRole('');
     setFilterGroup('');
     setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  // Helper function to filter available roles based on current user's role
+  const getAvailableRoles = () => {
+    const currentUserRole = currentUser?.role?.name || currentUser?.role;
+    
+    // If user is superadmin, show all roles
+    if (currentUserRole === 'superadmin') {
+      return roles;
+    }
+    
+    // If user is admin, filter out superadmin role
+    if (currentUserRole === 'admin') {
+      return roles.filter(role => role.name !== 'superadmin');
+    }
+    
+    // For other roles, only show non-admin/superadmin roles
+    return roles.filter(role => role.name !== 'admin' && role.name !== 'superadmin');
   };
 
   const showCreateModal = () => {
@@ -554,7 +574,7 @@ const UserManagement = () => {
               size={isMobile ? 'middle' : 'large'}
             >
               <Select.Option value="">All Roles</Select.Option>
-              {roles.map(role => (
+              {getAvailableRoles().map(role => (
                 <Select.Option key={role._id} value={role._id}>
                   <Space size="small">
                     {role.name === 'admin' || role.name === 'superadmin' ? (
@@ -729,7 +749,7 @@ const UserManagement = () => {
             rules={[{ required: true, message: 'Please select role' }]}
           >
             <Select placeholder="Select user role">
-              {roles.map(role => (
+              {getAvailableRoles().map(role => (
                 <Option key={role._id} value={role._id}>
                   <Space>
                     {role.name === 'admin' ? <SafetyOutlined /> : <UserOutlined />}
