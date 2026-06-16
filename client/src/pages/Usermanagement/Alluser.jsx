@@ -32,10 +32,11 @@ import {
   EnvironmentOutlined,
   SafetyOutlined,
   SearchOutlined,
-  ClearOutlined
+  ClearOutlined,
+  KeyOutlined
 } from '@ant-design/icons';
 import Sidebar from '../../components/Sidebar';
-import { getUsers, createUser, updateUser, deleteUser } from '../../api/userService';
+import { getUsers, createUser, updateUser, deleteUser, changeUserPassword } from '../../api/userService';
 import { getRoles } from '../../api/roleService';
 import AuthContext from '../../context/AuthContext';
 
@@ -53,11 +54,13 @@ const UserManagement = () => {
   const [modalType, setModalType] = useState('create'); // 'create' or 'edit'
   const [selectedUser, setSelectedUser] = useState(null);
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
   const [isMobile, setIsMobile] = useState(false);
   const [availableGroups, setAvailableGroups] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -222,6 +225,36 @@ const UserManagement = () => {
       console.error('Error deleting user:', error);
       message.error('Failed to delete user');
     }
+  };
+
+  const showPasswordChangeModal = (user) => {
+    // Only superadmin can change passwords, unless they're changing their own password
+    if (currentUser?.role?.name !== 'superadmin' && currentUser?._id !== user._id) {
+      message.error('Only superadmin can change other users\' passwords');
+      return;
+    }
+    
+    setSelectedUser(user);
+    passwordForm.resetFields();
+    setPasswordModalVisible(true);
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      const values = await passwordForm.validateFields();
+      await changeUserPassword(selectedUser._id, values.password);
+      message.success('Password changed successfully');
+      setPasswordModalVisible(false);
+      passwordForm.resetFields();
+    } catch (error) {
+      console.error('Error changing password:', error);
+      message.error(error.message || 'Failed to change password');
+    }
+  };
+
+  const handlePasswordModalCancel = () => {
+    setPasswordModalVisible(false);
+    passwordForm.resetFields();
   };
 
   // Get user statistics
@@ -415,6 +448,19 @@ const UserManagement = () => {
               {isMobile && 'Edit'}
             </Button>
           </Tooltip>
+          {currentUser?.role?.name === 'superadmin' && (
+            <Tooltip title="Change Password">
+              <Button
+                icon={<KeyOutlined />}
+                onClick={() => showPasswordChangeModal(record)}
+                shape={isMobile ? 'default' : 'circle'}
+                size={isMobile ? 'small' : 'middle'}
+                style={{ backgroundColor: '#1890ff', color: 'white', borderColor: '#1890ff' }}
+              >
+                {isMobile && 'Password'}
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip title={
             record.role?.name === 'admin' ? 'Cannot delete admin user' :
             record.role?.name === 'superadmin' ? 'Cannot delete superadmin user' :
@@ -775,6 +821,82 @@ const UserManagement = () => {
               filterOption={(inputValue, option) =>
                 option.label.toLowerCase().includes(inputValue.toLowerCase())
               }
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <KeyOutlined style={{ fontSize: isMobile ? '18px' : '20px', marginRight: '8px', color: '#00BF96' }} />
+            <span style={{ fontSize: isMobile ? '16px' : '18px' }}>
+              Change Password
+            </span>
+          </div>
+        }
+        open={passwordModalVisible}
+        onCancel={handlePasswordModalCancel}
+        onOk={handlePasswordChange}
+        okText="Change Password"
+        cancelText="Cancel"
+        okButtonProps={{
+          className: 'gradient-button',
+          style: { borderColor: 'transparent' }
+        }}
+        width={isMobile ? '95%' : 450}
+        centered
+        style={{ top: isMobile ? 20 : 100 }}
+      >
+        <Divider style={{ margin: '0 0 24px 0' }} />
+
+        <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#e6f7ff', borderRadius: '6px' }}>
+          <Text style={{ fontSize: isMobile ? '12px' : '14px' }}>
+            <strong>User:</strong> {selectedUser?.name} ({selectedUser?.email})
+          </Text>
+        </div>
+
+        <Form
+          form={passwordForm}
+          layout="vertical"
+          size={isMobile ? 'middle' : 'large'}
+        >
+          <Form.Item
+            name="password"
+            label="New Password"
+            rules={[
+              { required: true, message: 'Please enter new password' },
+              { min: 6, message: 'Password must be at least 6 characters' }
+            ]}
+            extra="Password must be at least 6 characters"
+          >
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#00BF96' }} />}
+              placeholder="Enter new password"
+              size={isMobile ? 'middle' : 'large'}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="confirmPassword"
+            label="Confirm Password"
+            dependencies={['password']}
+            rules={[
+              { required: true, message: 'Please confirm password' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Passwords do not match'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#00BF96' }} />}
+              placeholder="Confirm new password"
+              size={isMobile ? 'middle' : 'large'}
             />
           </Form.Item>
         </Form>

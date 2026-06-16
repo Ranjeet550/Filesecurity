@@ -93,3 +93,15 @@ export const deleteUser = async (userId) => {
     throw error.response?.data || error.message;
   }
 };
+
+// Change user password (Admin only)
+export const changeUserPassword = async (userId, password) => {
+  try {
+    const api = authAxios();
+    const response = await api.put(`${USERS_API_URL}/${userId}/password`, { password });
+    return response.data;
+  } catch (error) {
+    console.error('Error changing user password:', error);
+    throw error.response?.data || error.message;
+  }
+};

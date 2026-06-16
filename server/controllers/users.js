@@ -247,3 +247,53 @@ exports.deleteUser = async (req, res) => {
     }));
   }
 };
+
+// @desc    Change user password (Admin only)
+// @route   PUT /api/users/:id/password
+// @access  Private/Admin
+exports.changeUserPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    // Validate password
+    if (!password || password.length < 6) {
+      return res.status(400).json(encryptResponse({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      }));
+    }
+
+    // Find user
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json(encryptResponse({
+        success: false,
+        message: 'User not found'
+      }));
+    }
+
+    // If the requesting user is an admin (not superadmin), prevent changing superadmin passwords
+    if (req.user.role.name === 'admin' && user.role.name === 'superadmin') {
+      return res.status(403).json(encryptResponse({
+        success: false,
+        message: 'Access denied. Cannot change superadmin password.'
+      }));
+    }
+
+    // Update password
+    user.password = password;
+    await user.save();
+
+    res.status(200).json(encryptResponse({
+      success: true,
+      message: 'Password changed successfully'
+    }));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(encryptResponse({
+      success: false,
+      message: 'Server error'
+    }));
+  }
+};

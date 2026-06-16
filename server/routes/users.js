@@ -4,7 +4,8 @@ const {
   getUser,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  changeUserPassword
 } = require('../controllers/users');
 const { protect } = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permission');
@@ -22,5 +23,9 @@ router.route('/:id')
   .get(checkPermission('user_management', 'read'), getUser)
   .put(checkPermission('user_management', 'update'), updateUser)
   .delete(checkPermission('user_management', 'delete'), deleteUser);
+
+// Password change route
+router.route('/:id/password')
+  .put(checkPermission('user_management', 'update'), changeUserPassword);
 
 module.exports = router;
