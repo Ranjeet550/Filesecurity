@@ -7,7 +7,6 @@ import {
   Card,
   Row,
   Col,
-  Divider,
   Spin,
   Alert,
   App
@@ -15,8 +14,6 @@ import {
 import {
   SettingOutlined,
   SaveOutlined,
-  InfoCircleOutlined,
-  DownloadOutlined,
   TeamOutlined,
   ClockCircleOutlined
 } from '@ant-design/icons';
@@ -26,7 +23,16 @@ import AuthContext from '../../context/AuthContext';
 import { getDownloadLimit, setDownloadLimit } from '../../api/settingsService';
 import { hasPermission } from '../../utils/permissions';
 
-const { Title, Text } = Typography;
+/**
+ * Check if user is superadmin
+ * @param {Object} user - User object with role
+ * @returns {boolean} - True if user is superadmin
+ */
+const isSuperadmin = (user) => {
+  return user?.role?.name === 'superadmin';
+};
+
+const { Title } = Typography;
 
 const Configuration = () => {
   const { user } = useContext(AuthContext);
@@ -64,7 +70,7 @@ const Configuration = () => {
   const handleSubmit = async (values) => {
     try {
       setSaving(true);
-      const response = await setDownloadLimit(values.downloadLimit);
+      await setDownloadLimit(values.downloadLimit);
       setCurrentLimit(values.downloadLimit);
       message.success('Download limit updated successfully');
 
@@ -216,35 +222,37 @@ const Configuration = () => {
             </Card>
           </Col>
 
-          <Col xs={24} sm={12} md={8} lg={8} xl={6}>
-            <Card style={{
-              borderRadius: '8px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-              padding: '16px'
-            }}>
-              <Title level={4} style={{
-                margin: '0 0 8px 0'
+          {isSuperadmin(user) && (
+            <Col xs={24} sm={12} md={8} lg={8} xl={6}>
+              <Card style={{
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                padding: '16px'
               }}>
-                <ClockCircleOutlined style={{ marginRight: '6px' }} />
-                Session Settings
-              </Title>
-              
+                <Title level={4} style={{
+                  margin: '0 0 8px 0'
+                }}>
+                  <ClockCircleOutlined style={{ marginRight: '6px' }} />
+                  Session Settings
+                </Title>
+                
 
-              <Link to="/session-settings" style={{ width: '100%' }}>
-                <Button
-                  type="primary"
-                  icon={<ClockCircleOutlined />}
-                  size="middle"
-                  style={{
-                    borderRadius: '6px',
-                    width: '100%'
-                  }}
-                >
-                  Manage Sessions
-                </Button>
-              </Link>
-            </Card>
-          </Col>
+                <Link to="/session-settings" style={{ width: '100%' }}>
+                  <Button
+                    type="primary"
+                    icon={<ClockCircleOutlined />}
+                    size="middle"
+                    style={{
+                      borderRadius: '6px',
+                      width: '100%'
+                    }}
+                  >
+                    Manage Sessions
+                  </Button>
+                </Link>
+              </Card>
+            </Col>
+          )}
         </Row>
       </div>
     </Sidebar>
