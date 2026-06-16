@@ -1568,7 +1568,7 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin, hiddenFil
           >
             <Select
               mode="multiple"
-              placeholder="Select users to assign"
+              placeholder={assignFile?.group ? `Select users from ${assignFile.group}` : "Select users to assign"}
               style={{ width: '100%' }}
               loading={allUsers.length === 0}
               optionFilterProp="children"
@@ -1580,7 +1580,18 @@ const FilesTable = ({ files, loading, fetchFiles, activeView, isAdmin, hiddenFil
               }
             >
               {allUsers
-                .filter(u => u._id !== assignFile?.uploadedBy?._id && u._id !== assignFile?.uploadedBy)
+                .filter(u => {
+                  // Exclude the uploader
+                  if (u._id === assignFile?.uploadedBy?._id || u._id === assignFile?.uploadedBy) {
+                    return false;
+                  }
+                  // If file has a group, only show users from that group
+                  if (assignFile?.group) {
+                    return u.group === assignFile.group;
+                  }
+                  // If file has no group, show all users (except uploader)
+                  return true;
+                })
                 .map(user => {
                   const groupName = user.group || 'No Group';
                   const groupColor = groupName === 'No Group' ? '#8c8c8c' :
