@@ -4,7 +4,6 @@ import { ConfigProvider, App as AntApp } from 'antd';
 import { useContext } from 'react';
 
 import themeConfig from './theme/themeConfig';
-import { storage } from './utils/storage';
 import AuthContext from './context/AuthContext';
 
 // Pages
@@ -47,54 +46,11 @@ function App() {
 
 // Separate component to use AuthContext
 function AppRoutes() {
-  const { user, token, loading, sessionExpired } = useContext(AuthContext);
+  const { user, token, sessionExpired } = useContext(AuthContext);
 
-  // Show loading spinner while checking authentication
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        fontSize: '16px'
-      }}>
-        Loading...
-      </div>
-    );
-  }
-
-  // Show session expired message
+  // Redirect to login if session expired
   if (sessionExpired) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        padding: '20px',
-        textAlign: 'center'
-      }}>
-        <h2 style={{ color: '#ff4d4f', marginBottom: '16px' }}>Session Expired</h2>
-        <p style={{ marginBottom: '24px', color: '#666' }}>
-          Your session has expired due to inactivity or timeout. Please login again.
-        </p>
-        <button
-          onClick={() => window.location.href = '/login'}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#1890ff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Go to Login
-        </button>
-      </div>
-    );
+    return <Navigate to="/login" replace />;
   }
 
   return (

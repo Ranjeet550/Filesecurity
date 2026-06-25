@@ -160,13 +160,21 @@ export const AuthProvider = ({ children }) => {
               return;
             }
   
-            // Fetch settings first
-            const settings = await fetchSessionSettings();
-  
-            // Validate session on load with fetched settings
-            if (!validateSession(settings.sessionTimeout, settings.inactivityTimeout)) {
-              setLoading(false);
-              return;
+            // Only fetch settings if not already set
+            if (!sessionTimeout || !inactivityTimeout) {
+              const settings = await fetchSessionSettings();
+              
+              // Validate session on load with fetched settings
+              if (!validateSession(settings.sessionTimeout, settings.inactivityTimeout)) {
+                setLoading(false);
+                return;
+              }
+            } else {
+              // Validate with existing settings
+              if (!validateSession()) {
+                setLoading(false);
+                return;
+              }
             }
   
             try {
@@ -292,6 +300,7 @@ export const AuthProvider = ({ children }) => {
 
       setLastActivity(Date.now());
       setSessionExpired(false);
+      profileFetchedRef.current = true; // Mark profile as already fetched during login
       setLoading(false);
       return responseData;
     } catch (err) {
