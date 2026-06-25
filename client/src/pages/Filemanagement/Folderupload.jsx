@@ -150,7 +150,6 @@ const FolderUpload = () => {
             const lowerHeader = header.toLowerCase().replace(/[_\s-]/g, '');
             const normalizedHeader = lowerHeader.replace(/[^a-zA-Z0-9]/g, '');
 
-
             // QP Details (enhanced patterns) - prefer "Catch No." over "Paper No."
             if (!autoMapping.QPdetails && (
               lowerHeader === 'catch no.' ||
@@ -277,14 +276,37 @@ const FolderUpload = () => {
       return null;
     }
 
-    // Since filename mapping is removed, use the first row of Excel data as default values
-    // This allows all files to be uploaded with metadata from the first Excel row
-    const firstRow = mappingData[0];
+    let matchingRow = null;
+    const filenameWithoutExt = filename.replace(/\.[^.]+$/, '').toLowerCase().trim();
+
+    // Strategy 1: Try to match by filename number with Catch No
+    // E.g., "8397.pdf" matches Catch No "8397"
+    const fileNumber = filenameWithoutExt.replace(/\D/g, '');
+    if (fileNumber) {
+      matchingRow = mappingData.find(row => {
+        const catchNo = String(row[headerMapping.QPdetails] || '').trim();
+        return catchNo === fileNumber;
+      });
+    }
+
+    // Strategy 2: Match sequentially by file order
+    // First PDF in folder = first Excel row, second PDF = second Excel row, etc
+    if (!matchingRow) {
+      const fileIndex = fileList.findIndex(f => f.name === filename);
+      if (fileIndex >= 0 && fileIndex < mappingData.length) {
+        matchingRow = mappingData[fileIndex];
+      }
+    }
+
+    // Last resort: use the first available row
+    if (!matchingRow) {
+      matchingRow = mappingData[0];
+    }
 
     // Convert values to strings and handle empty/null values
     const getValue = (key) => {
-      if (!key) return '';
-      const value = firstRow[key];
+      if (!key || !matchingRow) return '';
+      const value = matchingRow[key];
       if (value === null || value === undefined) return '';
       return String(value).trim();
     };
